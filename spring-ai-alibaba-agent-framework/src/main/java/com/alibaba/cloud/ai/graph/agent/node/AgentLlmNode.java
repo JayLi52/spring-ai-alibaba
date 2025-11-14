@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import reactor.core.publisher.Flux;
 
@@ -57,6 +58,7 @@ import static com.alibaba.cloud.ai.graph.checkpoint.BaseCheckpointSaver.THREAD_I
 public class AgentLlmNode implements NodeActionWithConfig {
 	public static final String MODEL_NODE_NAME = "model";
 	private static final Logger logger = LoggerFactory.getLogger(AgentLlmNode.class);
+	private static final Pattern TEMPLATE_PLACEHOLDER_PATTERN = Pattern.compile("\\{[A-Za-z0-9_.-]+}");
 	public static final String MODEL_ITERATION_KEY = "_MODEL_ITERATION_";
 
 	private String agentName;
@@ -296,8 +298,22 @@ public class AgentLlmNode implements NodeActionWithConfig {
 	}
 
 	private String renderPromptTemplate(String prompt, Map<String, Object> params) {
-		PromptTemplate promptTemplate = new PromptTemplate(prompt);
-		return promptTemplate.render(params);
+		if (!StringUtils.hasText(prompt) || params == null || params.isEmpty()) {
+			return prompt;
+		}
+
+		if (!TEMPLATE_PLACEHOLDER_PATTERN.matcher(prompt).find()) {
+			// 没有检测到合法的占位符，直接返回原始内容，避免 JSON 花括号被误判
+			return prompt;
+		}
+
+		try {
+			PromptTemplate promptTemplate = new PromptTemplate(prompt);
+			return promptTemplate.render(params);
+		} catch (Exception ex) {
+			logger.warn("Failed to render prompt template, fallback to original prompt. prompt={}", prompt, ex);
+			return prompt;
+		}
 	}
 
 	public void augmentUserMessage(List<Message> messages, String outputSchema) {

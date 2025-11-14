@@ -10,6 +10,7 @@ import com.alibaba.cloud.ai.examples.werewolf.service.VictoryCheckerService;
 import com.alibaba.cloud.ai.graph.agent.Agent;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.OverAllStateBuilder;
+import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,11 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 /**
  * 狼人杀游戏控制器
@@ -128,39 +125,79 @@ public class WerewolfGameController {
 		log.info("--- 夜晚阶段 ---");
 
 		// 1. 狼人行动：使用 Agent 智能决策击杀目标
-		try {
-			// 构建游戏历史信息（嵌入到 Agent 的 Prompt 中）
-			String gameHistory = buildGameHistory(gameState);
-			
-			// 构建 Agent，游戏状态已通过 instruction 传入
-			Agent werewolfAgent = nightAgentBuilder.buildWerewolfDiscussionAgent(gameState, gameHistory);
-			
-			// 执行 Agent：传入简单的触发指令
-			// 注意：详细的游戏状态和历史已经嵌入到 Prompt 中
-			String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
-			Optional<OverAllState> resultOpt = werewolfAgent.invoke(input);
-			
-			// 解析 Agent 返回的击杀目标
-			if (resultOpt.isPresent()) {
-				OverAllState result = resultOpt.get();
-				Object killTargetObj = result.data().get("werewolf_kill_target");
-				if (killTargetObj != null) {
-					String targetPlayer = parseTargetPlayer(killTargetObj);
-					if (targetPlayer != null && !targetPlayer.isEmpty()) {
-						gameState.setNightKilledPlayer(targetPlayer);
-						log.info("狼人 Agent 决策击杀: {}", targetPlayer);
+		// 检查是否还有存活的狼人
+		if (gameState.getAliveWerewolfCount() == 0) {
+			log.info("没有存活的狼人，跳过狼人行动");
+		} else {
+			try {
+				// 构建 Agent，游戏状态和历史信息会在方法内部构建
+				Agent werewolfAgent = nightAgentBuilder.buildWerewolfDiscussionAgent(gameState);
+				log.info("狼人 Agent 构建成功，准备执行决策");
+				
+				// 执行 Agent：传入简单的触发指令
+				// 注意：详细的游戏状态和历史已经嵌入到 Prompt 中
+				String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
+				
+				// 先不预设类型，直接看返回了什么
+				log.info("====== 开始调用 Agent ======");
+				log.info("输入内容: {}", input);
+				
+				Object rawResult = werewolfAgent.invoke(input);
+				log.info("====== Agent 调用完成 ======");
+				log.info("返回对象类型: {}", rawResult == null ? "null" : rawResult.getClass().getName());
+				log.info("返回对象内容: {}", rawResult);
+				
+				// 如果返回的是 Optional，检查它
+				if (rawResult instanceof Optional) {
+					Optional<?> opt = (Optional<?>) rawResult;
+					log.info("返回是 Optional, isPresent: {}", opt.isPresent());
+					if (opt.isPresent()) {
+						Object innerValue = opt.get();
+						log.info("Optional 内部值类型: {}", innerValue.getClass().getName());
+						log.info("Optional 内部值内容: {}", innerValue);
+						
+						if (innerValue instanceof OverAllState) {
+							OverAllState state = (OverAllState) innerValue;
+							log.info("OverAllState 的 data keys: {}", state.data().keySet());
+							log.info("OverAllState 的完整 data: {}", state.data());
+							
+							// 尝试从 state 中获取狼人击杀目标
+							Optional<Object> killTarget = state.value("werewolf_kill_target");
+							if (killTarget.isPresent()) {
+								log.info("找到击杀目标: {}", killTarget.get());
+								// TODO: 解析并设置击杀目标
+							} else {
+								log.warn("未找到 werewolf_kill_target，检查其他可能的 key");
+								log.info("所有 state keys: {}", state.data().keySet());
+							}
+						}
 					} else {
-						log.warn("狼人 Agent 未返回有效目标，跳过击杀");
+						log.error("Agent 返回的 Optional 是空的！可能是 LLM 调用失败或配置问题");
 					}
-				} else {
-					log.warn("狼人 Agent 返回结果为空，跳过击杀");
 				}
-			} else {
-				log.warn("狼人 Agent 执行返回空结果，跳过击杀");
+				
+				// 暂时使用随机击杀，等看到日志后再决定如何解析
+				log.warn("暂时使用随机击杀，等分析日志后再优化解析逻辑");
+				fallbackToRandomKill(gameState);
+				
+			} catch (Exception e) {
+				log.error("狼人 Agent 执行异常，降级为随机决策", e);
+				log.error("异常类型: {}", e.getClass().getName());
+				log.error("异常消息: {}", e.getMessage());
+				
+				// 检查是否是 API Key 相关的问题
+				if (e.getMessage() != null && (
+					e.getMessage().contains("api") || 
+					e.getMessage().contains("key") || 
+					e.getMessage().contains("unauthorized") ||
+					e.getMessage().contains("401") ||
+					e.getMessage().contains("403")
+				)) {
+					log.error("可能是 API Key 配置问题，请检查环境变量 AI_DASHSCOPE_API_KEY 是否正确设置");
+				}
+				
+				fallbackToRandomKill(gameState);
 			}
-		} catch (GraphStateException e) {
-			log.error("狼人 Agent 执行异常，降级为随机决策", e);
-			fallbackToRandomKill(gameState);
 		}
 
 		// 2. 女巫行动：简化处理，不使用药水
