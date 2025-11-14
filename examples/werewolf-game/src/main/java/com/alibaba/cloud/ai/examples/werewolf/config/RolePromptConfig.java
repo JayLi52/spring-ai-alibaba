@@ -146,10 +146,10 @@ public class RolePromptConfig {
 				3. 明天白天如何配合发言的策略
 				
 				输出格式（JSON）：
-				\\{
+				{
 					"targetPlayer": "推荐击杀的玩家名称",
 					"reason": "选择理由和策略分析"
-				\\}
+				}
 				""";
 		
 		return basePrompt;
@@ -184,10 +184,10 @@ public class RolePromptConfig {
 				3. 尚未查验过的玩家
 				
 				输出格式（JSON）：
-				\\{
+				{
 					"checkedPlayer": "要查验的玩家名称",
 					"reason": "选择理由"
-				\\}
+				}
 				""", String.join(", ", alivePlayers), historyStr.toString());
 	}
 
@@ -211,13 +211,13 @@ public class RolePromptConfig {
 				注意：解药和毒药不能在同一夜晚使用
 				
 				输出格式（JSON）：
-				\\{
+				{
 					"useAntidote": true/false,
 					"savedPlayer": "被救的玩家名称（如果使用解药）",
 					"usePoison": true/false,
 					"poisonedPlayer": "被毒的玩家名称（如果使用毒药）",
 					"reason": "决策理由"
-				\\}
+				}
 				""", killedPlayer != null ? killedPlayer : "无", hasAntidote ? "是" : "否", hasPoison ? "是" : "否",
 				String.join(", ", alivePlayers));
 	}
@@ -249,10 +249,10 @@ public class RolePromptConfig {
 				4. 根据角色策略决定是否跳身份
 				
 				输出格式（JSON）：
-				\\{
+				{
 					"speech": "你的发言内容（200-500字）",
 					"suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
-				\\}
+				}
 				""");
 
 		return context.toString();

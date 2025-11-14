@@ -140,8 +140,6 @@ public class WerewolfGameController {
 				
 				// 先不预设类型，直接看返回了什么
 				log.info("====== 开始调用 Agent ======");
-				log.info("输入内容: {}", input);
-				
 				Object rawResult = werewolfAgent.invoke(input);
 				log.info("====== Agent 调用完成 ======");
 				log.info("返回对象类型: {}", rawResult == null ? "null" : rawResult.getClass().getName());
@@ -160,19 +158,7 @@ public class WerewolfGameController {
 							OverAllState state = (OverAllState) innerValue;
 							log.info("OverAllState 的 data keys: {}", state.data().keySet());
 							log.info("OverAllState 的完整 data: {}", state.data());
-							
-							// 尝试从 state 中获取狼人击杀目标
-							Optional<Object> killTarget = state.value("werewolf_kill_target");
-							if (killTarget.isPresent()) {
-								log.info("找到击杀目标: {}", killTarget.get());
-								// TODO: 解析并设置击杀目标
-							} else {
-								log.warn("未找到 werewolf_kill_target，检查其他可能的 key");
-								log.info("所有 state keys: {}", state.data().keySet());
-							}
 						}
-					} else {
-						log.error("Agent 返回的 Optional 是空的！可能是 LLM 调用失败或配置问题");
 					}
 				}
 				
@@ -182,20 +168,6 @@ public class WerewolfGameController {
 				
 			} catch (Exception e) {
 				log.error("狼人 Agent 执行异常，降级为随机决策", e);
-				log.error("异常类型: {}", e.getClass().getName());
-				log.error("异常消息: {}", e.getMessage());
-				
-				// 检查是否是 API Key 相关的问题
-				if (e.getMessage() != null && (
-					e.getMessage().contains("api") || 
-					e.getMessage().contains("key") || 
-					e.getMessage().contains("unauthorized") ||
-					e.getMessage().contains("401") ||
-					e.getMessage().contains("403")
-				)) {
-					log.error("可能是 API Key 配置问题，请检查环境变量 AI_DASHSCOPE_API_KEY 是否正确设置");
-				}
-				
 				fallbackToRandomKill(gameState);
 			}
 		}

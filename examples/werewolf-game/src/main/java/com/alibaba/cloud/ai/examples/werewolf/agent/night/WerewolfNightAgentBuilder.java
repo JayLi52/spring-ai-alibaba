@@ -53,10 +53,10 @@ public class WerewolfNightAgentBuilder {
 				.instruction(promptConfig.getWerewolfNightSystemPrompt(soleWerewolf.getName(), Collections.emptyList(),
 						gameState.getAlivePlayers(), werewolfGameHistory))  // 使用狼人专属历史
 				.outputSchema("""
-						\\{
+						{
 							"targetPlayer": "击杀目标玩家名称",
 							"reason": "选择理由"
-						\\}
+						}
 						""")
 				.outputKey("werewolf_kill_target")
 				.build();
@@ -76,10 +76,10 @@ public class WerewolfNightAgentBuilder {
 				.instruction(promptConfig.getWerewolfNightSystemPrompt(werewolf.getName(), otherWerewolves,
 						gameState.getAlivePlayers(), werewolfGameHistory))  // 使用狼人专属历史
 				.outputSchema("""
-						\\{
+						{
 							"targetPlayer": "推荐击杀的玩家名称",
 							"reason": "选择理由和策略分析"
-						\\}
+						}
 						""")
 				.outputKey(werewolf.getName() + "_suggestion")
 				.build();
@@ -106,16 +106,16 @@ public class WerewolfNightAgentBuilder {
 					请分析所有建议，选择一个最优的击杀目标。
 					
 					输出格式（JSON）：
-					\\{
+					{
 						"targetPlayer": "最终击杀目标玩家名称",
 						"reason": "决策理由"
-					\\}
+					}
 					""", String.join(", ", gameState.getAlivePlayers())))
 			.outputSchema("""
-					\\{
+					{
 						"targetPlayer": "最终击杀目标",
 						"reason": "决策理由"
-					\\}
+					}
 					""")
 			.outputKey("werewolf_kill_target")
 			.build();
@@ -143,10 +143,10 @@ public class WerewolfNightAgentBuilder {
 			.model(chatModel)
 			.instruction(promptConfig.getSeerCheckSystemPrompt(gameState.getAlivePlayers(), checkHistory))
 			.outputSchema("""
-					\\{
+					{
 						"checkedPlayer": "被查验的玩家名称",
 						"reason": "选择理由"
-					\\}
+					}
 					""")
 			.outputKey("seer_check_result")
 			.build();
@@ -165,13 +165,13 @@ public class WerewolfNightAgentBuilder {
 			.instruction(promptConfig.getWitchActionSystemPrompt(gameState.getNightKilledPlayer(),
 					gameState.isWitchHasAntidote(), gameState.isWitchHasPoison(), gameState.getAlivePlayers()))
 			.outputSchema("""
-					\\{
+					{
 						"useAntidote": true,
 						"savedPlayer": "被救玩家名称",
 						"usePoison": false,
 						"poisonedPlayer": "被毒玩家名称",
 						"reason": "决策理由"
-					\\}
+					}
 					""")
 			.outputKey("witch_action_result")
 			.build();

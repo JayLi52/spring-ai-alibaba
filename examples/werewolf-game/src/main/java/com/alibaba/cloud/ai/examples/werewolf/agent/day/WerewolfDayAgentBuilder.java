@@ -56,10 +56,10 @@ public class WerewolfDayAgentBuilder {
 				.instruction(promptConfig.getDayDiscussionSystemPrompt(playerName, player.getRole(), nightInfo,
 						previousSpeeches, gameState.getCurrentRound()))
 				.outputSchema("""
-						\\{
+						{
 							"speech": "你的发言内容（200-500字）",
 							"suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
-						\\}
+						}
 						""")
 				.outputKey(playerName + "_speech")
 				.build();
@@ -97,20 +97,20 @@ public class WerewolfDayAgentBuilder {
 					请分析每个玩家的发言，模拟投票过程。
 					
 					输出格式（JSON）：
-					\\{
+					{
 						"votedOutPlayer": "被投票淘汰的玩家名称",
-						"voteDetails": \\{"玩家1": "投给玩家X", "玩家2": "投给玩家Y"\\},
-						"voteCount": \\{"玩家X": 3, "玩家Y": 2\\},
+						"voteDetails": {"玩家1": "投给玩家X", "玩家2": "投给玩家Y"},
+						"voteCount": {"玩家X": 3, "玩家Y": 2},
 						"reason": "投票理由分析"
-					\\}
+					}
 					""", speechesText, String.join(", ", gameState.getAlivePlayers())))
 			.outputSchema("""
-					\\{
+					{
 						"votedOutPlayer": "被投票淘汰的玩家",
 						"voteDetails": {},
 						"voteCount": {},
 						"reason": "投票理由分析"
-					\\}
+					}
 					""")
 			.outputKey("voting_result")
 			.build();
