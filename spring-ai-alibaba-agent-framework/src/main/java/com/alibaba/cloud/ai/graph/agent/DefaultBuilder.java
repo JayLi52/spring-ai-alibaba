@@ -79,7 +79,14 @@ public class DefaultBuilder extends Builder {
 		}
 
 		if (StringUtils.hasLength(outputSchema)) {
+			// Escape curly braces to prevent StTemplateRenderer parsing errors
+			outputSchema = outputSchema.replace("{", "\\{").replace("}", "\\}");
 			llmNodeBuilder.outputSchema(outputSchema);
+		}
+
+		// Escape curly braces in instruction to prevent StTemplateRenderer parsing errors
+		if (StringUtils.hasLength(this.instruction)) {
+			this.instruction = this.instruction.replace("{", "\\{").replace("}", "\\}");
 		}
 
 		// Separate unified interceptors by type

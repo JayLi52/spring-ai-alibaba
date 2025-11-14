@@ -15,6 +15,7 @@
  */
 package com.alibaba.cloud.ai.graph.utils;
 
+import com.alibaba.cloud.ai.graph.serializer.jackson.UserMessageJacksonModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,10 @@ public class SerializationUtils {
 
 	// Jackson ObjectMapper for serialization
 	private static final ObjectMapper objectMapper = new ObjectMapper();
+
+	static {
+		objectMapper.registerModule(new UserMessageJacksonModule());
+	}
 
 	private SerializationUtils() {
 		// Utility class - prevent instantiation
