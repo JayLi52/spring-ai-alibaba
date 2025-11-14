@@ -1,11 +1,18 @@
 package com.alibaba.cloud.ai.examples.werewolf.controller;
 
+import com.alibaba.cloud.ai.examples.werewolf.agent.night.WerewolfNightAgentBuilder;
 import com.alibaba.cloud.ai.examples.werewolf.config.WerewolfConfig;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
 import com.alibaba.cloud.ai.examples.werewolf.service.GameStateService;
 import com.alibaba.cloud.ai.examples.werewolf.service.SpeechOrderService;
 import com.alibaba.cloud.ai.examples.werewolf.service.VictoryCheckerService;
+import com.alibaba.cloud.ai.graph.agent.Agent;
+import com.alibaba.cloud.ai.graph.OverAllState;
+import com.alibaba.cloud.ai.graph.OverAllStateBuilder;
+import com.alibaba.cloud.ai.graph.exception.GraphStateException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 
 /**
@@ -35,7 +43,11 @@ public class WerewolfGameController {
 
 	private final WerewolfConfig config;
 
+	private final WerewolfNightAgentBuilder nightAgentBuilder;
+
 	private final Random random = new Random();
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * 启动新游戏
@@ -115,17 +127,40 @@ public class WerewolfGameController {
 	private void executeNightPhase(WerewolfGameState gameState) {
 		log.info("--- 夜晚阶段 ---");
 
-		// 1. 狼人行动：随机选择一个存活的好人击杀
-		List<Player> aliveVillagers = gameState.getAllPlayers()
-			.stream()
-			.filter(Player::isAlive)
-			.filter(Player::isVillager)
-			.toList();
-
-		if (!aliveVillagers.isEmpty()) {
-			Player target = aliveVillagers.get(random.nextInt(aliveVillagers.size()));
-			gameState.setNightKilledPlayer(target.getName());
-			log.info("狼人选择击杀: {}", target.getName());
+		// 1. 狼人行动：使用 Agent 智能决策击杀目标
+		try {
+			// 构建游戏历史信息（嵌入到 Agent 的 Prompt 中）
+			String gameHistory = buildGameHistory(gameState);
+			
+			// 构建 Agent，游戏状态已通过 instruction 传入
+			Agent werewolfAgent = nightAgentBuilder.buildWerewolfDiscussionAgent(gameState, gameHistory);
+			
+			// 执行 Agent：传入简单的触发指令
+			// 注意：详细的游戏状态和历史已经嵌入到 Prompt 中
+			String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
+			Optional<OverAllState> resultOpt = werewolfAgent.invoke(input);
+			
+			// 解析 Agent 返回的击杀目标
+			if (resultOpt.isPresent()) {
+				OverAllState result = resultOpt.get();
+				Object killTargetObj = result.data().get("werewolf_kill_target");
+				if (killTargetObj != null) {
+					String targetPlayer = parseTargetPlayer(killTargetObj);
+					if (targetPlayer != null && !targetPlayer.isEmpty()) {
+						gameState.setNightKilledPlayer(targetPlayer);
+						log.info("狼人 Agent 决策击杀: {}", targetPlayer);
+					} else {
+						log.warn("狼人 Agent 未返回有效目标，跳过击杀");
+					}
+				} else {
+					log.warn("狼人 Agent 返回结果为空，跳过击杀");
+				}
+			} else {
+				log.warn("狼人 Agent 执行返回空结果，跳过击杀");
+			}
+		} catch (GraphStateException e) {
+			log.error("狼人 Agent 执行异常，降级为随机决策", e);
+			fallbackToRandomKill(gameState);
 		}
 
 		// 2. 女巫行动：简化处理，不使用药水
@@ -199,6 +234,85 @@ public class WerewolfGameController {
 		String votedOut = gameState.getVotedOutPlayer();
 		if (votedOut != null) {
 			gameStateService.eliminatePlayer(gameState, votedOut, "day", "被投票淘汰");
+		}
+	}
+
+	/**
+	 * 构建游戏历史信息，用于 Agent 决策
+	 */
+	private String buildGameHistory(WerewolfGameState gameState) {
+		StringBuilder history = new StringBuilder();
+		
+		// 添加当前回合信息
+		history.append(String.format("当前回合：%d\n", gameState.getCurrentRound()));
+		
+		// 添加淘汰历史
+		if (!gameState.getEliminationHistory().isEmpty()) {
+			history.append("\n淘汰历史：\n");
+			for (WerewolfGameState.EliminationRecord record : gameState.getEliminationHistory()) {
+				history.append(String.format("  第%d回合 %s：%s - %s\n", 
+					record.getRound(), 
+					record.getPhase().equals("night") ? "夜晚" : "白天",
+					record.getPlayerName(),
+					record.getReason()));
+			}
+		}
+		
+		// 添加历史发言记录（最近3回合）
+		if (!gameState.getHistoricalSpeeches().isEmpty()) {
+			history.append("\n最近白天发言：\n");
+			gameState.getHistoricalSpeeches().entrySet().stream()
+				.sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey())) // 降序
+				.limit(3)
+				.forEach(entry -> {
+					history.append(String.format("  第%d回合：\n", entry.getKey()));
+					entry.getValue().forEach((player, speech) -> 
+						history.append(String.format("    %s: %s\n", player, speech)));
+				});
+		}
+		
+		return history.toString();
+	}
+	
+	/**
+	 * 解析 Agent 返回的击杀目标
+	 */
+	private String parseTargetPlayer(Object killTargetObj) {
+		try {
+			if (killTargetObj instanceof String) {
+				// 如果是 JSON 字符串，解析它
+				JsonNode jsonNode = objectMapper.readTree((String) killTargetObj);
+				if (jsonNode.has("targetPlayer")) {
+					return jsonNode.get("targetPlayer").asText();
+				}
+			} else if (killTargetObj instanceof Map) {
+				// 如果是 Map，直接取值
+				@SuppressWarnings("unchecked")
+				Map<String, Object> resultMap = (Map<String, Object>) killTargetObj;
+				Object target = resultMap.get("targetPlayer");
+				return target != null ? target.toString() : null;
+			}
+			log.warn("无法解析击杀目标，返回对象类型: {}", killTargetObj.getClass().getName());
+		} catch (Exception e) {
+			log.error("解析击杀目标失败", e);
+		}
+		return null;
+	}
+
+	/**
+	 * 降级策略：随机选择击杀目标
+	 */
+	private void fallbackToRandomKill(WerewolfGameState gameState) {
+		List<Player> aliveVillagers = gameState.getAllPlayers()
+			.stream()
+			.filter(Player::isAlive)
+			.filter(Player::isVillager)
+			.toList();
+
+		if (!aliveVillagers.isEmpty()) {
+			Player target = aliveVillagers.get(random.nextInt(aliveVillagers.size()));
+			gameState.setNightKilledPlayer(target.getName());
+			log.info("随机选择击杀: {}", target.getName());
 		}
 	}
 

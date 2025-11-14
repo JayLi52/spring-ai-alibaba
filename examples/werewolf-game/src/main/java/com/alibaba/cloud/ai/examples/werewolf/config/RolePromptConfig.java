@@ -123,14 +123,22 @@ public class RolePromptConfig {
 	}
 
 	/**
-	 * 获取夜晚阶段狼人讨论的系统提示
+	 * 获取夜晚阶段狼人讨论的系统提示（增强版：包含游戏历史）
 	 */
 	public String getWerewolfNightSystemPrompt(String werewolfName, java.util.List<String> otherWerewolves,
-			java.util.List<String> alivePlayers) {
-		return String.format("""
+			java.util.List<String> alivePlayers, String gameHistory) {
+		String basePrompt = String.format("""
 				你是狼人 %s，正在与其他狼人（%s）讨论今晚击杀目标。
 				
 				当前存活玩家：%s
+				""", werewolfName, String.join(", ", otherWerewolves), String.join(", ", alivePlayers));
+		
+		// 如果有游戏历史，添加到Prompt中
+		if (gameHistory != null && !gameHistory.isEmpty()) {
+			basePrompt += "\n\n游戏历史信息：\n" + gameHistory + "\n";
+		}
+		
+		basePrompt += """
 				
 				请分析局势并提出你的击杀建议：
 				1. 推荐击杀的目标玩家及理由
@@ -142,7 +150,17 @@ public class RolePromptConfig {
 					"targetPlayer": "推荐击杀的玩家名称",
 					"reason": "选择理由和策略分析"
 				}
-				""", werewolfName, String.join(", ", otherWerewolves), String.join(", ", alivePlayers));
+				""";
+		
+		return basePrompt;
+	}
+	
+	/**
+	 * 获取夜晚阶段狼人讨论的系统提示（兼容旧版本）
+	 */
+	public String getWerewolfNightSystemPrompt(String werewolfName, java.util.List<String> otherWerewolves,
+			java.util.List<String> alivePlayers) {
+		return getWerewolfNightSystemPrompt(werewolfName, otherWerewolves, alivePlayers, null);
 	}
 
 	/**

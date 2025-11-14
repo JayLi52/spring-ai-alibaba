@@ -30,9 +30,11 @@ public class WerewolfNightAgentBuilder {
 	private final RolePromptConfig promptConfig;
 
 	/**
-	 * 构建狼人讨论 Agent（多 Agent 协作） 为了更贴近真实狼人杀场景，狼人夜晚行动采用多 Agent 协作模式
+	 * 构建狼人讨论 Agent（多 Agent 协作）
+	 * @param gameState 游戏状态
+	 * @param gameHistory 游戏历史信息（包含淘汰记录、发言历史等）
 	 */
-	public Agent buildWerewolfDiscussionAgent(WerewolfGameState gameState) throws GraphStateException {
+	public Agent buildWerewolfDiscussionAgent(WerewolfGameState gameState, String gameHistory) throws GraphStateException {
 		List<Player> aliveWerewolves = gameState.getAliveWerewolves();
 
 		if (aliveWerewolves.isEmpty()) {
@@ -47,7 +49,7 @@ public class WerewolfNightAgentBuilder {
 				.name("sole_werewolf_action")
 				.model(chatModel)
 				.instruction(promptConfig.getWerewolfNightSystemPrompt(soleWerewolf.getName(), Collections.emptyList(),
-						gameState.getAlivePlayers()))
+						gameState.getAlivePlayers(), gameHistory))  // 传入游戏历史
 				.outputSchema("""
 						{
 							"targetPlayer": "击杀目标玩家名称",
@@ -70,7 +72,7 @@ public class WerewolfNightAgentBuilder {
 				.name(werewolf.getName() + "_werewolf_discuss")
 				.model(chatModel)
 				.instruction(promptConfig.getWerewolfNightSystemPrompt(werewolf.getName(), otherWerewolves,
-						gameState.getAlivePlayers()))
+						gameState.getAlivePlayers(), gameHistory))  // 传入游戏历史
 				.outputSchema("""
 						{
 							"targetPlayer": "推荐击杀的玩家名称",
@@ -170,11 +172,11 @@ public class WerewolfNightAgentBuilder {
 	/**
 	 * 构建完整的夜晚阶段 SequentialAgent
 	 */
-	public Agent buildNightPhaseAgent(WerewolfGameState gameState) throws GraphStateException {
+	public Agent buildNightPhaseAgent(WerewolfGameState gameState, String gameHistory) throws GraphStateException {
 		List<Agent> nightAgents = new ArrayList<>();
 
 		// 1. 狼人行动
-		nightAgents.add(buildWerewolfDiscussionAgent(gameState));
+		nightAgents.add(buildWerewolfDiscussionAgent(gameState, gameHistory));
 
 		// 2. 女巫行动（如果存活）
 		if (hasAliveWitch(gameState)) {
