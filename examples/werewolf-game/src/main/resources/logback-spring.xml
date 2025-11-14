@@ -70,8 +70,9 @@
         <appender-ref ref="ERROR_FILE"/>
     </logger>
     
-    <!-- Spring AI 相关日志 -->
-    <logger name="org.springframework.ai" level="INFO"/>
+    <!-- Spring AI 相关日志 - 开启 DEBUG 级别查看 LLM 调用详情 -->
+    <logger name="org.springframework.ai" level="DEBUG"/>
+    <logger name="com.alibaba.cloud.ai" level="DEBUG"/>
     
     <!-- Root logger -->
     <root level="INFO">

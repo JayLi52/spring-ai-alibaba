@@ -4,10 +4,11 @@ import com.alibaba.cloud.ai.examples.werewolf.config.RolePromptConfig;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
 import com.alibaba.cloud.ai.graph.agent.Agent;
-import com.alibaba.cloud.ai.graph.agent.ParallelAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
-import com.alibaba.cloud.ai.graph.agent.SequentialAgent;
-import com.alibaba.cloud.ai.graph.strategy.merge.ListMergeStrategy;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent.ListMergeStrategy;
+import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -31,7 +32,7 @@ public class WerewolfNightAgentBuilder {
 	/**
 	 * 构建狼人讨论 Agent（多 Agent 协作） 为了更贴近真实狼人杀场景，狼人夜晚行动采用多 Agent 协作模式
 	 */
-	public Agent buildWerewolfDiscussionAgent(WerewolfGameState gameState) {
+	public Agent buildWerewolfDiscussionAgent(WerewolfGameState gameState) throws GraphStateException {
 		List<Player> aliveWerewolves = gameState.getAliveWerewolves();
 
 		if (aliveWerewolves.isEmpty()) {
@@ -84,7 +85,7 @@ public class WerewolfNightAgentBuilder {
 		// 使用 ParallelAgent 让所有狼人并行讨论
 		ParallelAgent parallelDiscussion = ParallelAgent.builder()
 			.name("werewolf_parallel_discussion")
-			.agents(werewolfAgents)
+			.subAgents(werewolfAgents)
 			.mergeStrategy(new ListMergeStrategy())
 			.mergeOutputKey("werewolf_suggestions")
 			.build();
@@ -118,7 +119,7 @@ public class WerewolfNightAgentBuilder {
 		// 使用 SequentialAgent 串联：讨论 -> 决策
 		return SequentialAgent.builder()
 			.name("werewolf_night_action")
-			.agents(List.of(parallelDiscussion, finalDecision))
+			.subAgents(List.of(parallelDiscussion, finalDecision))
 			.build();
 	}
 
@@ -169,7 +170,7 @@ public class WerewolfNightAgentBuilder {
 	/**
 	 * 构建完整的夜晚阶段 SequentialAgent
 	 */
-	public Agent buildNightPhaseAgent(WerewolfGameState gameState) {
+	public Agent buildNightPhaseAgent(WerewolfGameState gameState) throws GraphStateException {
 		List<Agent> nightAgents = new ArrayList<>();
 
 		// 1. 狼人行动
@@ -185,7 +186,7 @@ public class WerewolfNightAgentBuilder {
 			nightAgents.add(buildSeerAgent(gameState));
 		}
 
-		return SequentialAgent.builder().name("night_phase").agents(nightAgents).build();
+		return SequentialAgent.builder().name("night_phase").subAgents(nightAgents).build();
 	}
 
 	/**

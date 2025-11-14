@@ -7,8 +7,7 @@ import com.alibaba.cloud.ai.examples.werewolf.service.GameStateService;
 import com.alibaba.cloud.ai.examples.werewolf.service.SpeechOrderService;
 import com.alibaba.cloud.ai.examples.werewolf.service.VictoryCheckerService;
 import com.alibaba.cloud.ai.graph.agent.Agent;
-import com.alibaba.cloud.ai.graph.core.context.OverAllState;
-import com.alibaba.cloud.ai.graph.core.Output;
+import com.alibaba.cloud.ai.graph.OverAllState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -47,16 +46,16 @@ public class WerewolfAgentGameController {
 		log.info("游戏初始化完成，玩家角色分配：");
 		gameState.getPlayerRoles().forEach((player, role) -> log.info("  {} - {}", player, role.getDisplayName()));
 
-		// 创建初始 OverAllState
-		OverAllState overAllState = gameAgentBuilder.createInitialState(gameState);
-
 		try {
+			// 创建初始 OverAllState
+			OverAllState overAllState = gameAgentBuilder.createInitialState(gameState);
+			
 			// 构建游戏主循环 Agent
 			Agent gameLoopAgent = gameAgentBuilder.buildGameLoopAgent(gameState);
 
 			// 执行游戏（这会运行完整的游戏循环）
 			log.info("开始游戏主循环...");
-			Output output = gameLoopAgent.call(overAllState);
+			gameLoopAgent.invoke("开始游戏");
 
 			log.info("游戏主循环结束");
 

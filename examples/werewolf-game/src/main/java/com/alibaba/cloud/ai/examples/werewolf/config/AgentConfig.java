@@ -6,18 +6,19 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Agent 配置类
+ * 负责配置 LLM 相关的 Bean
  */
 @Configuration
 public class AgentConfig {
 
 	/**
-	 * 注入 ChatModel Bean
-	 * 
-	 * Spring AI Alibaba 会自动配置 DashScope ChatModel
+	 * 配置 ChatModel Bean
+	 * Spring AI Alibaba DashScope Starter 会自动创建 ChatModel 实例
+	 * 这里直接注入并暴露为 Bean，供 Agent 使用
 	 */
 	@Bean
-	public ChatModel werewolfChatModel(ChatModel chatModel) {
-		return chatModel;
+	public ChatModel chatModel(ChatModel dashscopeChatModel) {
+		return dashscopeChatModel;
 	}
 
 }

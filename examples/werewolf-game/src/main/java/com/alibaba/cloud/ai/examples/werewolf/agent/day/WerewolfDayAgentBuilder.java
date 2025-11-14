@@ -6,10 +6,11 @@ import com.alibaba.cloud.ai.examples.werewolf.model.Role;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
 import com.alibaba.cloud.ai.examples.werewolf.service.GameStateService;
 import com.alibaba.cloud.ai.graph.agent.Agent;
-import com.alibaba.cloud.ai.graph.agent.ParallelAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
-import com.alibaba.cloud.ai.graph.agent.SequentialAgent;
-import com.alibaba.cloud.ai.graph.strategy.merge.ListMergeStrategy;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent.ListMergeStrategy;
+import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -37,7 +38,7 @@ public class WerewolfDayAgentBuilder {
 	/**
 	 * 构建白天讨论 ParallelAgent 所有存活玩家并行生成发言内容
 	 */
-	public Agent buildDayDiscussionAgent(WerewolfGameState gameState) {
+	public Agent buildDayDiscussionAgent(WerewolfGameState gameState) throws GraphStateException {
 		List<Agent> playerAgents = new ArrayList<>();
 
 		// 获取夜晚信息总结
@@ -68,7 +69,7 @@ public class WerewolfDayAgentBuilder {
 
 		return ParallelAgent.builder()
 			.name("day_discussion")
-			.agents(playerAgents)
+			.subAgents(playerAgents)
 			.mergeStrategy(new ListMergeStrategy())
 			.mergeOutputKey("all_speeches")
 			.build();
@@ -118,7 +119,7 @@ public class WerewolfDayAgentBuilder {
 	/**
 	 * 构建完整的白天阶段 SequentialAgent
 	 */
-	public Agent buildDayPhaseAgent(WerewolfGameState gameState) {
+	public Agent buildDayPhaseAgent(WerewolfGameState gameState) throws GraphStateException {
 		List<Agent> dayAgents = new ArrayList<>();
 
 		// 1. 讨论阶段（并行生成发言）
@@ -127,7 +128,7 @@ public class WerewolfDayAgentBuilder {
 		// 2. 投票阶段
 		dayAgents.add(buildVotingAgent(gameState));
 
-		return SequentialAgent.builder().name("day_phase").agents(dayAgents).build();
+		return SequentialAgent.builder().name("day_phase").subAgents(dayAgents).build();
 	}
 
 	/**

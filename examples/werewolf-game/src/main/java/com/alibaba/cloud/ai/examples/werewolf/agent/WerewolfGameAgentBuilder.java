@@ -8,12 +8,13 @@ import com.alibaba.cloud.ai.examples.werewolf.service.GameStateService;
 import com.alibaba.cloud.ai.examples.werewolf.service.SpeechOrderService;
 import com.alibaba.cloud.ai.examples.werewolf.service.VictoryCheckerService;
 import com.alibaba.cloud.ai.graph.agent.Agent;
-import com.alibaba.cloud.ai.graph.agent.LoopAgent;
-import com.alibaba.cloud.ai.graph.agent.SequentialAgent;
-import com.alibaba.cloud.ai.graph.agent.flow.agent.LoopMode;
-import com.alibaba.cloud.ai.graph.core.context.OverAllState;
-import com.alibaba.cloud.ai.graph.core.context.OverAllStateBuilder;
-import com.alibaba.cloud.ai.graph.core.context.strategy.KeyStrategy;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.LoopAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.loop.LoopMode;
+import com.alibaba.cloud.ai.graph.OverAllState;
+import com.alibaba.cloud.ai.graph.OverAllStateBuilder;
+import com.alibaba.cloud.ai.graph.KeyStrategy;
+import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -43,45 +44,43 @@ public class WerewolfGameAgentBuilder {
 	/**
 	 * 构建游戏主循环 Agent
 	 */
-	public Agent buildGameLoopAgent(WerewolfGameState gameState) {
+	public Agent buildGameLoopAgent(WerewolfGameState gameState) throws GraphStateException {
 		// 单回合 Agent: 夜晚 -> 白天
 		Agent singleRound = SequentialAgent.builder()
 			.name("single_round")
-			.agents(List.of(nightAgentBuilder.buildNightPhaseAgent(gameState),
+			.subAgents(List.of(nightAgentBuilder.buildNightPhaseAgent(gameState),
 					dayAgentBuilder.buildDayPhaseAgent(gameState)))
 			.build();
 
 		// 循环控制
 		return LoopAgent.builder()
 			.name("game_loop")
-			.agent(singleRound)
-			.loopMode(LoopMode.CONDITION)
-			.maxLoops(config.getMaxRounds())
-			.loopCondition(messages -> {
+			.subAgent(singleRound)
+			.loopStrategy(LoopMode.condition(messages -> {
 				// 检查游戏是否结束
-				return !gameState.isGameOver();
-			})
+				return gameState.isGameOver(); // true 时终止循环
+			}))
 			.build();
 	}
 
 	/**
 	 * 创建初始 OverAllState
 	 */
-	public OverAllState createInitialState(WerewolfGameState gameState) {
+	public OverAllState createInitialState(WerewolfGameState gameState) throws GraphStateException {
 		return OverAllStateBuilder.builder()
-			.addKey("game_state", gameState, KeyStrategy.REPLACE)
-			.addKey("alive_players", gameState.getAlivePlayers(), KeyStrategy.REPLACE)
-			.addKey("current_round", gameState.getCurrentRound(), KeyStrategy.REPLACE)
-			.addKey("night_killed_player", null, KeyStrategy.REPLACE)
-			.addKey("witch_saved_player", null, KeyStrategy.REPLACE)
-			.addKey("witch_poisoned_player", null, KeyStrategy.REPLACE)
-			.addKey("seer_checked_player", null, KeyStrategy.REPLACE)
-			.addKey("seer_check_result", null, KeyStrategy.REPLACE)
-			.addKey("day_speeches", gameState.getDaySpeeches(), KeyStrategy.REPLACE)
-			.addKey("speech_order", gameState.getSpeechOrder(), KeyStrategy.REPLACE)
-			.addKey("voted_out_player", null, KeyStrategy.REPLACE)
-			.addKey("game_over", false, KeyStrategy.REPLACE)
-			.addKey("winner", null, KeyStrategy.REPLACE)
+			.putData("game_state", gameState)
+			.putData("alive_players", gameState.getAlivePlayers())
+			.putData("current_round", gameState.getCurrentRound())
+			.putData("night_killed_player", null)
+			.putData("witch_saved_player", null)
+			.putData("witch_poisoned_player", null)
+			.putData("seer_checked_player", null)
+			.putData("seer_check_result", null)
+			.putData("day_speeches", gameState.getDaySpeeches())
+			.putData("speech_order", gameState.getSpeechOrder())
+			.putData("voted_out_player", null)
+			.putData("game_over", false)
+			.putData("winner", null)
 			.build();
 	}
 
