@@ -145,8 +145,8 @@ public class WerewolfGameController {
 				try {
 					var compiledGraph = werewolfAgent.getAndCompileGraph();
 					log.info("✅ [DEBUG] Graph 编译成功");
-					log.info("Graph 节点数量: {}", compiledGraph.getGraph().nodes().size());
-					log.info("Graph 边数量: {}", compiledGraph.getGraph().edges().size());
+//					log.info("Graph 节点数量: {}", compiledGraph.getGraph().nodes().size());
+//					log.info("Graph 边数量: {}", compiledGraph.getGraph().edges().size());
 				} catch (Exception graphEx) {
 					log.warn("⚠️  [DEBUG] 无法获取 Graph 信息: {}", graphEx.getMessage());
 				}
