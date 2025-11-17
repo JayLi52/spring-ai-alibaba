@@ -72,10 +72,10 @@
 		</dependency>
 		-->
 
-		<!-- Spring AI Alibaba DashScope (作为 LLM 后端，也支持兼容 OpenAI 格式) -->
+		<!-- Spring AI OpenAI (使用 DashScope 兼容模式，速度更快) -->
 		<dependency>
-			<groupId>com.alibaba.cloud.ai</groupId>
-			<artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-openai-spring-boot-starter</artifactId>
 		</dependency>
 
 		<!-- Spring Boot Web -->

@@ -154,6 +154,12 @@ public class WerewolfNightAgentBuilder {
 					werewolfGameHistory,
 					isFirstSpeaker
 				))
+				.outputSchema("""
+						{
+							"targetPlayer": "推荐击杀的玩家名称",
+							"reason": "选择理由和策略分析"
+						}
+						""")
 				// 注意：不设置 outputKey，让结果自动追加到 messages 中
 				// 这样每轮讨论都会累积在 messages 历史中
 				.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
