@@ -23,6 +23,14 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.AssistantMessageHandler;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.SystemMessageHandler;
+import com.alibaba.cloud.ai.graph.serializer.plain_text.jackson.ToolResponseMessageHandler;
+
 /**
  * Utility class for object serialization and deep copying operations.
  */
@@ -34,6 +42,17 @@ public class SerializationUtils {
 
 	static {
 		objectMapper.registerModule(new UserMessageJacksonModule());
+
+		// Register Spring AI chat message serializers/deserializers to support deep copy
+		SimpleModule springAiModule = new SimpleModule();
+		springAiModule.addSerializer(AssistantMessage.class, new AssistantMessageHandler.Serializer());
+		springAiModule.addDeserializer(AssistantMessage.class, new AssistantMessageHandler.Deserializer());
+		springAiModule.addSerializer(SystemMessage.class, new SystemMessageHandler.Serializer());
+		springAiModule.addDeserializer(SystemMessage.class, new SystemMessageHandler.Deserializer());
+		springAiModule.addSerializer(ToolResponseMessage.class, new ToolResponseMessageHandler.Serializer());
+		springAiModule.addDeserializer(ToolResponseMessage.class, new ToolResponseMessageHandler.Deserializer());
+
+		objectMapper.registerModule(springAiModule);
 	}
 
 	private SerializationUtils() {

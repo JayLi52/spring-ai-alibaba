@@ -6,10 +6,12 @@ import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
 import com.alibaba.cloud.ai.graph.CompileConfig;
 import com.alibaba.cloud.ai.graph.agent.Agent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.LoopAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent.ListMergeStrategy;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.loop.LoopMode;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +34,7 @@ public class WerewolfNightAgentBuilder {
 	private final RolePromptConfig promptConfig;
 
 	/**
-	 * 构建狼人讨论 Agent（多 Agent 协作）
+	 * 构建狼人讨论 Agent（3轮有序讨论 + 最终决策）
 	 * @param gameState 游戏状态
 	 */
 	public Agent buildWerewolfDiscussionAgent(WerewolfGameState gameState) throws GraphStateException {
@@ -64,53 +66,36 @@ public class WerewolfNightAgentBuilder {
 				.build();
 		}
 
-		// 多个狼人：并行讨论 + 综合决策
-		List<Agent> werewolfAgents = new ArrayList<>();
-		for (Player werewolf : aliveWerewolves) {
-			List<String> otherWerewolves = aliveWerewolves.stream()
-				.map(Player::getName)
-				.filter(name -> !name.equals(werewolf.getName()))
-				.collect(Collectors.toList());
+		// 多个狼人：3轮有序讨论 + 最终决策
+		// 单轮讨论：所有狼人按顺序发言
+		Agent singleRoundDiscussion = buildSingleRoundDiscussionAgent(aliveWerewolves, werewolfGameHistory, gameState);
 
-			ReactAgent agent = ReactAgent.builder()
-				.name(werewolf.getName() + "_werewolf_discuss")
-				.model(chatModel)
-				.instruction(promptConfig.getWerewolfNightSystemPrompt(werewolf.getName(), otherWerewolves,
-						gameState.getAlivePlayers(), werewolfGameHistory))  // 使用狼人专属历史
-				.outputSchema("""
-						{
-							"targetPlayer": "推荐击杀的玩家名称",
-							"reason": "选择理由和策略分析"
-						}
-						""")
-				.outputKey(werewolf.getName() + "_suggestion")
-				.build();
-			werewolfAgents.add(agent);
-		}
-
-		// 使用 ParallelAgent 让所有狼人并行讨论
-		ParallelAgent parallelDiscussion = ParallelAgent.builder()
-			.name("werewolf_parallel_discussion")
-			.subAgents(werewolfAgents)
-			.mergeStrategy(new ListMergeStrategy())
-			.mergeOutputKey("werewolf_suggestions")
+		// 使用 LoopAgent 实现 3 轮讨论
+		Agent multiRoundDiscussion = LoopAgent.builder()
+			.name("werewolf_multi_round_discussion")
+			.subAgent(singleRoundDiscussion)
+			.loopStrategy(LoopMode.count(3))  // 固定 3 轮讨论
 			.build();
 
-		// 综合所有狼人意见的最终决策 Agent
+		// 综合所有讨论结果的最终决策 Agent
 		ReactAgent finalDecision = ReactAgent.builder()
 			.name("werewolf_final_decision")
 			.model(chatModel)
 			.instruction(String.format("""
-					你需要综合所有狼人的建议，做出最终击杀决策。
+					你是狼人阵营的最终决策者。现在需要综合前面3轮讨论的所有意见，做出最终击杀决策。
 					
 					存活玩家：%s
 					
-					请分析所有建议，选择一个最优的击杀目标。
+					请仔细分析所有狼人在3轮讨论中的建议，权衡利弊，选择一个最优的击杀目标。
+					注意：
+					1. 优先击杀神职玩家（预言家、女巫）
+					2. 考虑狼人团队的整体战略
+					3. 如果有多个候选目标，选择被提及最多的
 					
 					输出格式（JSON）：
 					{
-						"targetPlayer": "最终击杀目标玩家名称",
-						"reason": "决策理由"
+						"targetPlayer": "最终击杀目标玩家名称（必须是存活玩家中的一个）",
+						"reason": "综合决策理由，说明为什么选择这个目标"
 					}
 					""", String.join(", ", gameState.getAlivePlayers())))
 			.outputSchema("""
@@ -127,12 +112,101 @@ public class WerewolfNightAgentBuilder {
 			.withLifecycleListener(new GraphDebugLifecycleListener())
 			.build();
 
-		// 使用 SequentialAgent 串联：讨论 -> 决策
+		// 使用 SequentialAgent 串联：3轮讨论 -> 最终决策
 		return SequentialAgent.builder()
 			.name("werewolf_night_action")
-			.subAgents(List.of(parallelDiscussion, finalDecision))
+			.subAgents(List.of(multiRoundDiscussion, finalDecision))
 			.compileConfig(debugConfig)
 			.build();
+	}
+
+	/**
+	 * 构建单轮讨论 Agent（所有狼人按顺序发言）
+	 */
+	private Agent buildSingleRoundDiscussionAgent(List<Player> aliveWerewolves, String werewolfGameHistory, WerewolfGameState gameState) throws GraphStateException {
+		List<Agent> sequentialSpeeches = new ArrayList<>();
+
+		// 为每个狼人创建一个发言 Agent，按顺序执行
+		for (int i = 0; i < aliveWerewolves.size(); i++) {
+			Player werewolf = aliveWerewolves.get(i);
+			List<String> otherWerewolves = aliveWerewolves.stream()
+				.map(Player::getName)
+				.filter(name -> !name.equals(werewolf.getName()))
+				.collect(Collectors.toList());
+
+			boolean isFirstSpeaker = (i == 0);
+			
+			ReactAgent speechAgent = ReactAgent.builder()
+				.name(werewolf.getName() + "_round_speech")
+				.model(chatModel)
+				.instruction(buildWerewolfRoundSpeechPrompt(
+					werewolf.getName(),
+					otherWerewolves,
+					gameState.getAlivePlayers(),
+					werewolfGameHistory,
+					isFirstSpeaker
+				))
+				// 注意：不设置 outputKey，让结果自动追加到 messages 中
+				// 这样每轮讨论都会累积在 messages 历史中
+				.build();
+			
+			sequentialSpeeches.add(speechAgent);
+		}
+
+		// 使用 SequentialAgent 让狼人按顺序发言
+		return SequentialAgent.builder()
+			.name("single_round_discussion")
+			.subAgents(sequentialSpeeches)
+			.build();
+	}
+
+	/**
+	 * 构建狼人单轮发言的 Prompt
+	 */
+	private String buildWerewolfRoundSpeechPrompt(String werewolfName, List<String> otherWerewolves, 
+			List<String> alivePlayers, String gameHistory, boolean isFirstSpeaker) {
+		StringBuilder prompt = new StringBuilder();
+		
+		prompt.append(String.format("你是 %s，狼人阵营的成员。\n\n", werewolfName));
+		
+		if (!otherWerewolves.isEmpty()) {
+			prompt.append(String.format("你的狼人队友：%s\n\n", String.join(", ", otherWerewolves)));
+		}
+		
+		prompt.append(gameHistory).append("\n\n");
+		
+		prompt.append("### 当前讨论环节\n");
+		if (isFirstSpeaker) {
+			prompt.append("你是本轮第一个发言的狼人。\n");
+			prompt.append("**注意**：查看上面的历史消息，可能包含之前轮次的讨论内容，请基于完整历史进行分析。\n\n");
+			prompt.append("请：\n");
+			prompt.append("1. 回顾前面轮次的讨论（如果有）\n");
+			prompt.append("2. 分析当前局势\n");
+			prompt.append("3. 推荐一个击杀目标\n");
+			prompt.append("4. 说明你的理由和策略考虑\n");
+		} else {
+			prompt.append("前面的狼人队友已经在本轮发言。\n");
+			prompt.append("**重要**：\n");
+			prompt.append("- 查看上方消息历史，包含本轮前面狼人的发言\n");
+			prompt.append("- 也包含之前轮次的所有讨论记录\n\n");
+			prompt.append("请：\n");
+			prompt.append("1. 回应本轮前面狼人的意见（表示同意或提出不同看法）\n");
+			prompt.append("2. 参考历史讨论，综合考虑团队意见\n");
+			prompt.append("3. 给出你的击杀目标建议\n");
+			prompt.append("4. 补充新的策略分析或风险提示\n");
+		}
+		
+		prompt.append(String.format("\n可选目标（存活玩家）：%s\n", String.join(", ", alivePlayers)));
+		prompt.append("\n请用JSON格式输出你的建议：\n");
+		prompt.append("{\n");
+		prompt.append("  \"targetPlayer\": \"推荐击杀的玩家名称\",\n");
+		prompt.append("  \"reason\": \"选择理由和策略分析\"\n");
+		if (!isFirstSpeaker) {
+			prompt.append(",\n  \"response\": \"对前面狼人发言的回应\"\n");
+		}
+		prompt.append("}\n");
+		
+		return prompt.toString();
 	}
 
 	/**
