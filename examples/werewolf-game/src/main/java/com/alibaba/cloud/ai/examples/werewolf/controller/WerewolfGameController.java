@@ -131,43 +131,124 @@ public class WerewolfGameController {
 		} else {
 			try {
 				// 构建 Agent，游戏状态和历史信息会在方法内部构建
+				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+				log.info("🔧 [DEBUG] 开始构建狼人 Agent");
+				log.info("存活狼人数量: {}", gameState.getAliveWerewolfCount());
+				log.info("存活玩家: {}", gameState.getAlivePlayers());
+				
 				Agent werewolfAgent = nightAgentBuilder.buildWerewolfDiscussionAgent(gameState);
-				log.info("狼人 Agent 构建成功，准备执行决策");
+				log.info("✅ [DEBUG] 狼人 Agent 构建成功");
+				log.info("Agent 名称: {}", werewolfAgent.name());
+				log.info("Agent 描述: {}", werewolfAgent.description());
+				
+				// 获取编译后的图信息（用于调试）
+				try {
+					var compiledGraph = werewolfAgent.getAndCompileGraph();
+					log.info("✅ [DEBUG] Graph 编译成功");
+					log.info("Graph 节点数量: {}", compiledGraph.getGraph().nodes().size());
+					log.info("Graph 边数量: {}", compiledGraph.getGraph().edges().size());
+				} catch (Exception graphEx) {
+					log.warn("⚠️  [DEBUG] 无法获取 Graph 信息: {}", graphEx.getMessage());
+				}
 				
 				// 执行 Agent：传入简单的触发指令
 				// 注意：详细的游戏状态和历史已经嵌入到 Prompt 中
 				String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
+				log.info("📥 [DEBUG] 输入消息: {}", input);
 				
-				// 先不预设类型，直接看返回了什么
-				log.info("====== 开始调用 Agent ======");
+				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+				log.info("🚀 [DEBUG] ====== 开始调用 Agent.invoke() ======");
+				long startTime = System.currentTimeMillis();
+				
 				Object rawResult = werewolfAgent.invoke(input);
-				log.info("====== Agent 调用完成 ======");
-				log.info("返回对象类型: {}", rawResult == null ? "null" : rawResult.getClass().getName());
-				log.info("返回对象内容: {}", rawResult);
 				
-				// 如果返回的是 Optional，检查它
-				if (rawResult instanceof Optional) {
-					Optional<?> opt = (Optional<?>) rawResult;
-					log.info("返回是 Optional, isPresent: {}", opt.isPresent());
-					if (opt.isPresent()) {
-						Object innerValue = opt.get();
-						log.info("Optional 内部值类型: {}", innerValue.getClass().getName());
-						log.info("Optional 内部值内容: {}", innerValue);
+				long endTime = System.currentTimeMillis();
+				log.info("✅ [DEBUG] ====== Agent.invoke() 调用完成 (耗时: {}ms) ======", endTime - startTime);
+				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+				
+				// 详细分析返回结果
+				log.info("📊 [DEBUG] 返回结果分析:");
+				log.info("  返回对象是否为 null: {}", rawResult == null);
+				if (rawResult != null) {
+					log.info("  返回对象类型: {}", rawResult.getClass().getName());
+					log.info("  返回对象 toString(): {}", rawResult);
+					
+					// 如果返回的是 Optional，检查它
+					if (rawResult instanceof Optional) {
+						Optional<?> opt = (Optional<?>) rawResult;
+						log.info("  ✅ 返回是 Optional");
+						log.info("  Optional.isPresent(): {}", opt.isPresent());
 						
-						if (innerValue instanceof OverAllState) {
-							OverAllState state = (OverAllState) innerValue;
-							log.info("OverAllState 的 data keys: {}", state.data().keySet());
-							log.info("OverAllState 的完整 data: {}", state.data());
+						if (opt.isPresent()) {
+							Object innerValue = opt.get();
+							log.info("  Optional 内部值类型: {}", innerValue.getClass().getName());
+							log.info("  Optional 内部值 toString(): {}", innerValue);
+							
+							if (innerValue instanceof OverAllState) {
+								OverAllState state = (OverAllState) innerValue;
+								log.info("  ✅ 内部值是 OverAllState");
+								log.info("  OverAllState.data() keys ({} 个): {}", 
+									state.data().size(), state.data().keySet());
+								
+								// 打印关键数据
+								state.data().forEach((key, value) -> {
+									if (value instanceof String && ((String) value).length() > 100) {
+										log.info("    {} = {}... (截断)", key, 
+											((String) value).substring(0, 100));
+									} else {
+										log.info("    {} = {}", key, value);
+									}
+								});
+								
+								// 尝试提取击杀目标
+								Object killTarget = state.data().get("werewolf_kill_target");
+								if (killTarget != null) {
+									log.info("  🎯 找到击杀目标数据: {}", killTarget);
+									log.info("  击杀目标类型: {}", killTarget.getClass().getName());
+								} else {
+									log.warn("  ⚠️  未找到 'werewolf_kill_target' 键");
+									log.info("  可用的键: {}", state.data().keySet());
+								}
+							} else {
+								log.info("  ⚠️  内部值不是 OverAllState，而是: {}", innerValue.getClass().getName());
+							}
+						} else {
+							log.warn("  ⚠️  Optional 为空，没有返回值");
 						}
+					} else {
+						log.info("  ⚠️  返回不是 Optional，直接是: {}", rawResult.getClass().getName());
 					}
 				}
+				
+				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 				
 				// 暂时使用随机击杀，等看到日志后再决定如何解析
 				log.warn("暂时使用随机击杀，等分析日志后再优化解析逻辑");
 				fallbackToRandomKill(gameState);
 				
+			} catch (GraphRunnerException e) {
+				log.error("❌ [DEBUG] GraphRunnerException - 图执行异常", e);
+				log.error("异常类型: {}", e.getClass().getName());
+				log.error("异常消息: {}", e.getMessage());
+				if (e.getCause() != null) {
+					log.error("根本原因: {}", e.getCause().getMessage());
+				}
+				log.error("异常堆栈:", e);
+				fallbackToRandomKill(gameState);
+			} catch (GraphStateException e) {
+				log.error("❌ [DEBUG] GraphStateException - 图状态异常", e);
+				log.error("异常类型: {}", e.getClass().getName());
+				log.error("异常消息: {}", e.getMessage());
+				log.error("异常堆栈:", e);
+				fallbackToRandomKill(gameState);
 			} catch (Exception e) {
-				log.error("狼人 Agent 执行异常，降级为随机决策", e);
+				log.error("❌ [DEBUG] 未知异常 - 狼人 Agent 执行异常", e);
+				log.error("异常类型: {}", e.getClass().getName());
+				log.error("异常消息: {}", e.getMessage());
+				if (e.getCause() != null) {
+					log.error("根本原因: {}", e.getCause().getMessage());
+				}
+				log.error("异常堆栈:", e);
 				fallbackToRandomKill(gameState);
 			}
 		}

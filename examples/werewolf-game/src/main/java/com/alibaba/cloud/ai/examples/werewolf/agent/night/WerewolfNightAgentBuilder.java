@@ -1,8 +1,10 @@
 package com.alibaba.cloud.ai.examples.werewolf.agent.night;
 
 import com.alibaba.cloud.ai.examples.werewolf.config.RolePromptConfig;
+import com.alibaba.cloud.ai.examples.werewolf.debug.GraphDebugLifecycleListener;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
+import com.alibaba.cloud.ai.graph.CompileConfig;
 import com.alibaba.cloud.ai.graph.agent.Agent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
@@ -120,10 +122,16 @@ public class WerewolfNightAgentBuilder {
 			.outputKey("werewolf_kill_target")
 			.build();
 
+		// 创建带调试监听器的 CompileConfig
+		CompileConfig debugConfig = CompileConfig.builder()
+			.withLifecycleListener(new GraphDebugLifecycleListener())
+			.build();
+
 		// 使用 SequentialAgent 串联：讨论 -> 决策
 		return SequentialAgent.builder()
 			.name("werewolf_night_action")
 			.subAgents(List.of(parallelDiscussion, finalDecision))
+			.compileConfig(debugConfig)
 			.build();
 	}
 

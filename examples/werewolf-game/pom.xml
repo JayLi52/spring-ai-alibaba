@@ -19,6 +19,8 @@
 		<spring-ai.version>1.1.0-M4</spring-ai.version>
 		<spring-ai-alibaba.version>1.1.0.0-M4</spring-ai-alibaba.version>
 		<spring-ai-alibaba-extensions.version>1.1.0.0-M4</spring-ai-alibaba-extensions.version>
+		<!-- 使用本地开发模式：设置为 true 时使用本地模块，false 时使用远程 BOM -->
+		<use.local.modules>true</use.local.modules>
 	</properties>
 
 	<dependencyManagement>
@@ -37,6 +39,7 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- 条件性使用本地 BOM 或远程 BOM -->
 			<dependency>
 				<groupId>com.alibaba.cloud.ai</groupId>
 				<artifactId>spring-ai-alibaba-bom</artifactId>
@@ -49,10 +52,25 @@
 
 	<dependencies>
 		<!-- Spring AI Alibaba Agent Framework -->
+		<!-- 
+			注意：如果 use.local.modules=true，需要先执行 mvn install 安装本地模块到本地仓库
+			或者使用相对路径依赖（见下面的注释示例）
+		-->
 		<dependency>
 			<groupId>com.alibaba.cloud.ai</groupId>
 			<artifactId>spring-ai-alibaba-agent-framework</artifactId>
+			<!-- 如果使用本地开发，取消注释下面这行，并注释掉上面的依赖 -->
+			<!-- <version>${project.version}</version> -->
 		</dependency>
+		
+		<!-- 本地开发模式：直接引用本地模块（需要先执行 mvn install -N 安装父 POM） -->
+		<!-- 
+		<dependency>
+			<groupId>com.alibaba.cloud.ai</groupId>
+			<artifactId>spring-ai-alibaba-graph-core</artifactId>
+			<version>${spring-ai-alibaba.version}</version>
+		</dependency>
+		-->
 
 		<!-- Spring AI Alibaba DashScope (作为 LLM 后端，也支持兼容 OpenAI 格式) -->
 		<dependency>
