@@ -75,7 +75,7 @@
 		<!-- Spring AI OpenAI (使用 DashScope 兼容模式，速度更快) -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+			<artifactId>spring-ai-starter-model-openai</artifactId>
 		</dependency>
 
 		<!-- Spring Boot Web -->
