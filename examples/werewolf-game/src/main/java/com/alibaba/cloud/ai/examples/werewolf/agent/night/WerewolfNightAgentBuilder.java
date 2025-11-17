@@ -2,6 +2,10 @@ package com.alibaba.cloud.ai.examples.werewolf.agent.night;
 
 import com.alibaba.cloud.ai.examples.werewolf.config.RolePromptConfig;
 import com.alibaba.cloud.ai.examples.werewolf.debug.GraphDebugLifecycleListener;
+import com.alibaba.cloud.ai.examples.werewolf.logging.AgentExecutionLogHook;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ModelCallLogHook;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ModelCallLoggingInterceptor;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ToolCallLoggingInterceptor;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
 import com.alibaba.cloud.ai.graph.CompileConfig;
@@ -63,6 +67,8 @@ public class WerewolfNightAgentBuilder {
 						}
 						""")
 				.outputKey("werewolf_kill_target")
+				.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+				.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 				.build();
 		}
 
@@ -105,6 +111,8 @@ public class WerewolfNightAgentBuilder {
 					}
 					""")
 			.outputKey("werewolf_kill_target")
+			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 
 		// 创建带调试监听器的 CompileConfig
@@ -148,6 +156,8 @@ public class WerewolfNightAgentBuilder {
 				))
 				// 注意：不设置 outputKey，让结果自动追加到 messages 中
 				// 这样每轮讨论都会累积在 messages 历史中
+				.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+				.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 				.build();
 			
 			sequentialSpeeches.add(speechAgent);
@@ -231,6 +241,8 @@ public class WerewolfNightAgentBuilder {
 					}
 					""")
 			.outputKey("seer_check_result")
+			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 	}
 
@@ -256,6 +268,8 @@ public class WerewolfNightAgentBuilder {
 					}
 					""")
 			.outputKey("witch_action_result")
+			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 	}
 
@@ -467,6 +481,8 @@ public class WerewolfNightAgentBuilder {
 			.model(chatModel)
 			.instruction("No action needed")
 			.outputKey(name + "_result")
+			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 	}
 
