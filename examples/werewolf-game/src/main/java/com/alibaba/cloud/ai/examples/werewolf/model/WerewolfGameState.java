@@ -81,7 +81,13 @@ public class WerewolfGameState {
 	/**
 	 * 查验结果
 	 */
-	private Boolean seerCheckResult;
+    private Boolean seerCheckResult;
+
+    /**
+     * 预言家查验历史
+     */
+    @Builder.Default
+    private Map<String, Boolean> seerCheckHistory = new LinkedHashMap<>();
 
 	/**
 	 * 白天投票淘汰的玩家

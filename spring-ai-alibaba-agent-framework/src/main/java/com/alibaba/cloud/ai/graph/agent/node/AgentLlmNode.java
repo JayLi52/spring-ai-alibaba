@@ -145,8 +145,11 @@ public class AgentLlmNode implements NodeActionWithConfig {
 			}
 			@SuppressWarnings("unchecked")
 			List<Message> messages = (List<Message>) state.value("messages").get();
-			augmentUserMessage(messages, outputSchema);
-			renderTemplatedUserMessage(messages, state.data());
+            augmentUserMessage(messages, outputSchema);
+            escapeBracesForTemplates(messages);
+            if (containsTemplatePlaceholders(messages)) {
+                renderTemplatedUserMessage(messages, state.data());
+            }
 
 			// Create ModelRequest
 			ModelRequest.Builder requestBuilder = ModelRequest.builder()
@@ -206,8 +209,11 @@ public class AgentLlmNode implements NodeActionWithConfig {
 			}
 			@SuppressWarnings("unchecked")
 			List<Message> messages = (List<Message>) state.value("messages").get();
-			augmentUserMessage(messages, outputSchema);
-			renderTemplatedUserMessage(messages, state.data());
+            augmentUserMessage(messages, outputSchema);
+            escapeBracesForTemplates(messages);
+            if (containsTemplatePlaceholders(messages)) {
+                renderTemplatedUserMessage(messages, state.data());
+            }
 
 			// Create ModelRequest
 			ModelRequest modelRequest = ModelRequest.builder()
@@ -295,10 +301,53 @@ public class AgentLlmNode implements NodeActionWithConfig {
 		return messages;
 	}
 
-	private String renderPromptTemplate(String prompt, Map<String, Object> params) {
-		PromptTemplate promptTemplate = new PromptTemplate(prompt);
-		return promptTemplate.render(params);
-	}
+    private String renderPromptTemplate(String prompt, Map<String, Object> params) {
+        try {
+            PromptTemplate promptTemplate = new PromptTemplate(prompt);
+            return promptTemplate.render(params);
+        } catch (Exception e) {
+            return prompt;
+        }
+    }
+
+    private boolean containsTemplatePlaceholders(List<Message> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Message message = messages.get(i);
+            if (message instanceof AgentInstructionMessage instructionMessage) {
+                String text = instructionMessage.getText();
+                if (text != null && text.contains("$")) {
+                    return true;
+                }
+                break;
+            }
+        }
+        return false;
+    }
+
+    private void escapeBracesForTemplates(List<Message> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Message message = messages.get(i);
+            if (message instanceof AgentInstructionMessage instructionMessage) {
+                String text = instructionMessage.getText();
+                if (text != null && (text.contains("{") || text.contains("}"))) {
+                    String escaped = text.replace("{", "\\{").replace("}", "\\}");
+                    messages.set(i, instructionMessage.mutate().text(escaped).build());
+                }
+            } else if (message instanceof UserMessage userMessage) {
+                String text = userMessage.getText();
+                if (text != null && (text.contains("{") || text.contains("}"))) {
+                    String escaped = text.replace("{", "\\{").replace("}", "\\}");
+                    messages.set(i, userMessage.mutate().text(escaped).build());
+                }
+            } else if (message instanceof SystemMessage systemMessage) {
+                String text = systemMessage.getText();
+                if (text != null && (text.contains("{") || text.contains("}"))) {
+                    String escaped = text.replace("{", "\\{").replace("}", "\\}");
+                    messages.set(i, new SystemMessage(escaped));
+                }
+            }
+        }
+    }
 
 	public void augmentUserMessage(List<Message> messages, String outputSchema) {
 		if (!StringUtils.hasText(outputSchema)) {

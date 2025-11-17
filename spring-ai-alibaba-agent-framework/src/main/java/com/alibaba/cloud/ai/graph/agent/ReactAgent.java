@@ -38,7 +38,6 @@ import com.alibaba.cloud.ai.graph.agent.hook.ToolInjection;
 import com.alibaba.cloud.ai.graph.agent.hook.hip.HumanInTheLoopHook;
 import com.alibaba.cloud.ai.graph.agent.interceptor.ModelInterceptor;
 import com.alibaba.cloud.ai.graph.agent.interceptor.ToolInterceptor;
-import com.alibaba.cloud.ai.graph.serializer.AgentInstructionMessage;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.alibaba.cloud.ai.graph.internal.node.Node;
@@ -731,16 +730,14 @@ public class ReactAgent extends BaseAgent {
 			if (includeContents) {
 				// by default, includeContents is true, we pass down the messages from the parent state
 				if (StringUtils.hasLength(instruction)) {
-					// instruction will be added as a special UserMessage to the child graph.
-					parentState.updateState(Map.of("messages", new AgentInstructionMessage(instruction)));
+					parentState.updateState(Map.of("messages", new UserMessage(instruction)));
 				}
 				subGraphResult = childGraph.graphResponseStream(parentState, subGraphRunnableConfig);
 			} else {
 				Map<String, Object> stateForChild = new HashMap<>(parentState.data());
 				parentMessages = stateForChild.remove("messages");
 				if (StringUtils.hasLength(instruction)) {
-					// instruction will be added as a special UserMessage to the child graph.
-					stateForChild.put("messages", new AgentInstructionMessage(instruction));
+					stateForChild.put("messages", new UserMessage(instruction));
 				}
 				subGraphResult = childGraph.graphResponseStream(stateForChild, subGraphRunnableConfig);
 			}

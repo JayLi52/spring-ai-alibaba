@@ -1,5 +1,6 @@
 package com.alibaba.cloud.ai.examples.werewolf.controller;
 
+import com.alibaba.cloud.ai.examples.werewolf.agent.WerewolfGameAgentBuilder;
 import com.alibaba.cloud.ai.examples.werewolf.agent.night.WerewolfNightAgentBuilder;
 import com.alibaba.cloud.ai.examples.werewolf.config.WerewolfConfig;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
@@ -40,35 +41,37 @@ public class WerewolfGameController {
 
 	private final WerewolfConfig config;
 
-	private final WerewolfNightAgentBuilder nightAgentBuilder;
-
-	private final Random random = new Random();
-
-	private final ObjectMapper objectMapper = new ObjectMapper();
+    private final WerewolfGameAgentBuilder gameAgentBuilder;
+    private final WerewolfNightAgentBuilder nightAgentBuilder;
+    private Random random = new Random();
+    private ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * 启动新游戏
 	 */
-	@PostMapping("/start")
-	public Map<String, Object> startGame() {
-		log.info("启动新游戏...");
+    @PostMapping("/start")
+    public Map<String, Object> startGame() {
+        log.info("启动 LLM 驱动的狼人杀游戏...");
 
-		// 初始化游戏状态
-		WerewolfGameState gameState = gameStateService.initializeGame();
+        WerewolfGameState gameState = gameStateService.initializeGame();
 
-		// 运行游戏循环（简化版本）
-		runGameLoop(gameState);
+        try {
+            Agent gameLoopAgent = gameAgentBuilder.buildGameLoopAgent(gameState);
+            gameLoopAgent.invoke("开始游戏");
+        } catch (Exception e) {
+            log.error("游戏执行出错", e);
+        }
 
-		// 返回游戏结果
-		Map<String, Object> result = new HashMap<>();
-		result.put("gameOver", gameState.isGameOver());
-		result.put("winner", gameState.getWinner());
-		result.put("totalRounds", gameState.getCurrentRound());
-		result.put("eliminationHistory", gameState.getEliminationHistory());
-		result.put("finalMessage", victoryChecker.getVictoryMessage(gameState));
-
-		return result;
-	}
+        Map<String, Object> result = new HashMap<>();
+        result.put("gameOver", gameState.isGameOver());
+        result.put("winner", gameState.getWinner());
+        result.put("totalRounds", gameState.getCurrentRound());
+        result.put("eliminationHistory", gameState.getEliminationHistory());
+        result.put("finalMessage", victoryChecker.getVictoryMessage(gameState));
+        result.put("survivingPlayers", gameState.getAlivePlayers());
+        result.put("playerRoles", gameState.getPlayerRoles());
+        return result;
+    }
 
 	/**
 	 * 游戏主循环（简化版本，不使用LLM）
@@ -166,65 +169,57 @@ public class WerewolfGameController {
 				log.info("✅ [DEBUG] ====== Agent.invoke() 调用完成 (耗时: {}ms) ======", endTime - startTime);
 				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 				
-				// 详细分析返回结果
-				log.info("📊 [DEBUG] 返回结果分析:");
-				log.info("  返回对象是否为 null: {}", rawResult == null);
-				if (rawResult != null) {
-					log.info("  返回对象类型: {}", rawResult.getClass().getName());
-					log.info("  返回对象 toString(): {}", rawResult);
-					
-					// 如果返回的是 Optional，检查它
-					if (rawResult instanceof Optional) {
-						Optional<?> opt = (Optional<?>) rawResult;
-						log.info("  ✅ 返回是 Optional");
-						log.info("  Optional.isPresent(): {}", opt.isPresent());
-						
-						if (opt.isPresent()) {
-							Object innerValue = opt.get();
-							log.info("  Optional 内部值类型: {}", innerValue.getClass().getName());
-							log.info("  Optional 内部值 toString(): {}", innerValue);
-							
-							if (innerValue instanceof OverAllState) {
-								OverAllState state = (OverAllState) innerValue;
-								log.info("  ✅ 内部值是 OverAllState");
-								log.info("  OverAllState.data() keys ({} 个): {}", 
-									state.data().size(), state.data().keySet());
-								
-								// 打印关键数据
-								state.data().forEach((key, value) -> {
-									if (value instanceof String && ((String) value).length() > 100) {
-										log.info("    {} = {}... (截断)", key, 
-											((String) value).substring(0, 100));
-									} else {
-										log.info("    {} = {}", key, value);
-									}
-								});
-								
-								// 尝试提取击杀目标
-								Object killTarget = state.data().get("werewolf_kill_target");
-								if (killTarget != null) {
-									log.info("  🎯 找到击杀目标数据: {}", killTarget);
-									log.info("  击杀目标类型: {}", killTarget.getClass().getName());
-								} else {
-									log.warn("  ⚠️  未找到 'werewolf_kill_target' 键");
-									log.info("  可用的键: {}", state.data().keySet());
-								}
-							} else {
-								log.info("  ⚠️  内部值不是 OverAllState，而是: {}", innerValue.getClass().getName());
-							}
-						} else {
-							log.warn("  ⚠️  Optional 为空，没有返回值");
-						}
-					} else {
-						log.info("  ⚠️  返回不是 Optional，直接是: {}", rawResult.getClass().getName());
-					}
-				}
+                log.info("📊 [DEBUG] 返回结果分析:");
+                log.info("  返回对象是否为 null: {}", rawResult == null);
+                if (rawResult != null) {
+                    log.info("  返回对象类型: {}", rawResult.getClass().getName());
+                    log.info("  返回对象 toString(): {}", rawResult);
+                    if (rawResult instanceof Optional opt) {
+                        log.info("  ✅ 返回是 Optional");
+                        log.info("  Optional.isPresent(): {}", opt.isPresent());
+                        if (opt.isPresent()) {
+                            Object innerValue = opt.get();
+                            log.info("  Optional 内部值类型: {}", innerValue.getClass().getName());
+                            log.info("  Optional 内部值 toString(): {}", innerValue);
+                            if (innerValue instanceof OverAllState state) {
+                                log.info("  ✅ 内部值是 OverAllState");
+                                log.info("  OverAllState.data() keys ({} 个): {}", state.data().size(), state.data().keySet());
+                                state.data().forEach((key, value) -> {
+                                    if (value instanceof String && ((String) value).length() > 100) {
+                                        log.info("    {} = {}... (截断)", key, ((String) value).substring(0, 100));
+                                    } else {
+                                        log.info("    {} = {}", key, value);
+                                    }
+                                });
+                                Object killTarget = state.data().get("werewolf_kill_target");
+                                if (killTarget != null) {
+                                    String target = parseTargetPlayer(killTarget);
+                                    if (target != null && !target.isBlank()) {
+                                        gameState.setNightKilledPlayer(target);
+                                        log.info("🎯 使用 Agent 决策击杀: {}", target);
+                                    } else {
+                                        log.warn("  ⚠️  解析 'werewolf_kill_target' 失败");
+                                    }
+                                } else {
+                                    log.warn("  ⚠️  未找到 'werewolf_kill_target' 键");
+                                }
+                            } else {
+                                log.info("  ⚠️  内部值不是 OverAllState，而是: {}", innerValue.getClass().getName());
+                            }
+                        } else {
+                            log.warn("  ⚠️  Optional 为空，没有返回值");
+                        }
+                    } else {
+                        log.info("  ⚠️  返回不是 Optional，直接是: {}", rawResult.getClass().getName());
+                    }
+                }
 				
 				log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 				
-				// 暂时使用随机击杀，等看到日志后再决定如何解析
-				log.warn("暂时使用随机击杀，等分析日志后再优化解析逻辑");
-				fallbackToRandomKill(gameState);
+                if (gameState.getNightKilledPlayer() == null || gameState.getNightKilledPlayer().isBlank()) {
+                    log.warn("未从 Agent 输出中获取到击杀目标，回退为随机击杀");
+                    fallbackToRandomKill(gameState);
+                }
 				
 			} catch (GraphRunnerException e) {
 				log.error("❌ [DEBUG] GraphRunnerException - 图执行异常", e);
@@ -253,17 +248,81 @@ public class WerewolfGameController {
 			}
 		}
 
-		// 2. 女巫行动：简化处理，不使用药水
-		log.info("女巫本回合不使用药水");
+        // 2. 女巫行动
+        try {
+            Agent witchAgent = nightAgentBuilder.buildWitchAgent(gameState);
+            Optional<OverAllState> witchStateOpt = witchAgent.invoke("女巫行动");
+            if (witchStateOpt.isPresent()) {
+                OverAllState witchState = witchStateOpt.get();
+                Object witchResult = witchState.data().get("witch_action_result");
+                if (witchResult != null) {
+                    Map<String, Object> resultMap;
+                    if (witchResult instanceof String) {
+                        try {
+                            JsonNode node = objectMapper.readTree((String) witchResult);
+                            resultMap = objectMapper.convertValue(node, Map.class);
+                        } catch (Exception ex) {
+                            resultMap = Map.of();
+                        }
+                    } else if (witchResult instanceof Map) {
+                        resultMap = (Map<String, Object>) witchResult;
+                    } else {
+                        resultMap = Map.of();
+                    }
+                    Object useAntidote = resultMap.get("useAntidote");
+                    Object savedPlayer = resultMap.get("savedPlayer");
+                    Object usePoison = resultMap.get("usePoison");
+                    Object poisonedPlayer = resultMap.get("poisonedPlayer");
+                    if (useAntidote instanceof Boolean && (Boolean) useAntidote && savedPlayer != null) {
+                        gameState.setWitchSavedPlayer(savedPlayer.toString());
+                        gameState.setWitchHasAntidote(false);
+                        log.info("🧪 女巫使用解药救治: {}", savedPlayer);
+                    }
+                    if (usePoison instanceof Boolean && (Boolean) usePoison && poisonedPlayer != null) {
+                        gameState.setWitchPoisonedPlayer(poisonedPlayer.toString());
+                        gameState.setWitchHasPoison(false);
+                        log.info("☠️ 女巫使用毒药毒杀: {}", poisonedPlayer);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("女巫行动处理异常: {}", ex.getMessage());
+        }
 
-		// 3. 预言家行动：随机查验一个玩家
-		List<Player> alivePlayers = gameState.getAllPlayers().stream().filter(Player::isAlive).toList();
-		if (!alivePlayers.isEmpty()) {
-			Player checked = alivePlayers.get(random.nextInt(alivePlayers.size()));
-			gameState.setSeerCheckedPlayer(checked.getName());
-			gameState.setSeerCheckResult(checked.isWerewolf());
-			log.info("预言家查验: {}，结果: {}", checked.getName(), checked.isWerewolf() ? "狼人" : "好人");
-		}
+        // 3. 预言家行动
+        try {
+            Agent seerAgent = nightAgentBuilder.buildSeerAgent(gameState);
+            Optional<OverAllState> seerStateOpt = seerAgent.invoke("预言家查验");
+            if (seerStateOpt.isPresent()) {
+                OverAllState seerState = seerStateOpt.get();
+                Object seerResult = seerState.data().get("seer_check_result");
+                if (seerResult != null) {
+                    String checkedPlayer = null;
+                    if (seerResult instanceof String) {
+                        try {
+                            JsonNode node = objectMapper.readTree((String) seerResult);
+                            if (node.has("checkedPlayer")) {
+                                checkedPlayer = node.get("checkedPlayer").asText();
+                            }
+                        } catch (Exception ignore) {}
+                    } else if (seerResult instanceof Map) {
+                        Object val = ((Map<?, ?>) seerResult).get("checkedPlayer");
+                        if (val != null) {
+                            checkedPlayer = val.toString();
+                        }
+                    }
+                    if (checkedPlayer != null && !checkedPlayer.isBlank()) {
+                        gameState.setSeerCheckedPlayer(checkedPlayer);
+                        boolean isWolf = gameState.getPlayerByName(checkedPlayer).map(Player::isWerewolf).orElse(false);
+                        gameState.setSeerCheckResult(isWolf);
+                        gameStateService.recordSeerCheck(gameState, checkedPlayer, isWolf);
+                        log.info("🔎 预言家查验: {}，结果: {}", checkedPlayer, isWolf ? "狼人" : "好人");
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("预言家行动处理异常: {}", ex.getMessage());
+        }
 	}
 
 	/**
@@ -302,19 +361,72 @@ public class WerewolfGameController {
 
 		log.info("发言顺序: {}", gameState.getSpeechOrder());
 
-		// 简化发言阶段：每个玩家简单发言
-		for (String playerName : gameState.getSpeechOrder()) {
-			String speech = String.format("%s的发言内容（简化版本）", playerName);
-			gameState.getDaySpeeches().put(playerName, speech);
-		}
+        try {
+            Agent discussion = dayAgentBuilder.buildDayDiscussionAgent(gameState);
+            Optional<OverAllState> discussStateOpt = discussion.invoke("白天并行讨论");
+            if (discussStateOpt.isPresent()) {
+                OverAllState discussState = discussStateOpt.get();
+                Object speeches = discussState.data().get("all_speeches");
+                if (speeches instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof String s) {
+                            try {
+                                JsonNode node = objectMapper.readTree(s);
+                                String playerName = node.has("playerName") ? node.get("playerName").asText() : null;
+                                String speech = node.has("speech") ? node.get("speech").asText() : null;
+                                if (playerName != null && speech != null) {
+                                    gameState.getDaySpeeches().put(playerName, speech);
+                                }
+                            } catch (Exception ignore) {}
+                        } else if (item instanceof Map<?, ?> m) {
+                            Object pn = m.get("playerName");
+                            Object sp = m.get("speech");
+                            if (pn != null && sp != null) {
+                                gameState.getDaySpeeches().put(pn.toString(), sp.toString());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("并行讨论解析异常: {}", ex.getMessage());
+        }
 
-		// 投票阶段：随机选择一个存活玩家淘汰
-		List<String> alivePlayers = gameState.getAlivePlayers();
-		if (!alivePlayers.isEmpty()) {
-			String votedOut = alivePlayers.get(random.nextInt(alivePlayers.size()));
-			gameState.setVotedOutPlayer(votedOut);
-			log.info("投票结果: {} 被投票淘汰", votedOut);
-		}
+        try {
+            Agent voting = dayAgentBuilder.buildVotingAgent(gameState);
+            Optional<OverAllState> votingStateOpt = voting.invoke("白天投票");
+            if (votingStateOpt.isPresent()) {
+                OverAllState votingState = votingStateOpt.get();
+                Object votingResult = votingState.data().get("voting_result");
+                String votedOut = null;
+                if (votingResult instanceof String s) {
+                    try {
+                        JsonNode node = objectMapper.readTree(s);
+                        if (node.has("votedOutPlayer")) {
+                            votedOut = node.get("votedOutPlayer").asText();
+                        }
+                    } catch (Exception ignore) {}
+                } else if (votingResult instanceof Map<?, ?> m) {
+                    Object v = m.get("votedOutPlayer");
+                    if (v != null) {
+                        votedOut = v.toString();
+                    }
+                }
+                if (votedOut != null && !votedOut.isBlank()) {
+                    gameState.setVotedOutPlayer(votedOut);
+                    log.info("投票结果: {} 被投票淘汰", votedOut);
+                } else {
+                    List<String> alivePlayers = gameState.getAlivePlayers();
+                    if (!alivePlayers.isEmpty()) {
+                        String fallback = alivePlayers.get(random.nextInt(alivePlayers.size()));
+                        gameState.setVotedOutPlayer(fallback);
+                        log.info("投票结果缺失，随机淘汰: {}", fallback);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("投票阶段解析异常: {}", ex.getMessage());
+        }
 	}
 
 	/**

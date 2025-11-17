@@ -69,3 +69,4 @@ modified_mcp_config.json
 **/spans.json
 
 .checkstyle
+.tools/

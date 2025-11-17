@@ -65,24 +65,29 @@ public class EnhancedParallelResultAggregator implements NodeAction {
 		for (BaseAgent subAgent : subAgents) {
 			String subAgentOutputKey = subAgent.getOutputKey();
 			if (subAgentOutputKey != null) {
-				Optional<Object> agentResult = state.value(subAgentOutputKey);
-				if (agentResult.isPresent()) {
-					if (agentResult.get() instanceof GraphResponse<?> graphResponse){
-						if (graphResponse.resultValue().isPresent() && graphResponse.resultValue().get() instanceof Map  map) {
-							subAgentResults.put(subAgentOutputKey, map.get(subAgentOutputKey));
-						}else {
-							subAgentResults.put(subAgentOutputKey, graphResponse.resultValue().get());
-						}
-					}else {
-						subAgentResults.put(subAgentOutputKey, agentResult.get());
-					}
-					logger.debug("Collected result from {}: {} = {}", subAgent.name(), subAgentOutputKey,
-							agentResult.get());
-				}
-				else {
-					logger.warn("No output found for sub-agent: {} (outputKey: {})", subAgent.name(),
-							subAgentOutputKey);
-				}
+                Optional<Object> agentResult = state.value(subAgentOutputKey);
+                if (agentResult.isPresent()) {
+                    Object value = agentResult.get();
+                    if (value instanceof GraphResponse<?> graphResponse) {
+                        if (graphResponse.resultValue().isPresent()) {
+                            Object rv = graphResponse.resultValue().get();
+                            if (rv instanceof Map map) {
+                                subAgentResults.put(subAgentOutputKey, map.get(subAgentOutputKey));
+                            } else {
+                                subAgentResults.put(subAgentOutputKey, rv);
+                            }
+                        } else {
+                            logger.warn("Sub-agent {} produced no result value (empty Optional), skipping.", subAgent.name());
+                        }
+                    } else {
+                        subAgentResults.put(subAgentOutputKey, value);
+                    }
+                    logger.debug("Collected result from {}: {} = {}", subAgent.name(), subAgentOutputKey, value);
+                }
+                else {
+                    logger.warn("No output found for sub-agent: {} (outputKey: {})", subAgent.name(),
+                            subAgentOutputKey);
+                }
 			}
 		}
 

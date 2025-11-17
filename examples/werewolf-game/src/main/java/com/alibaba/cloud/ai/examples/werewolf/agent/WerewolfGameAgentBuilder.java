@@ -53,14 +53,14 @@ public class WerewolfGameAgentBuilder {
 			.build();
 
 		// 循环控制
-		return LoopAgent.builder()
-			.name("game_loop")
-			.subAgent(singleRound)
-			.loopStrategy(LoopMode.condition(messages -> {
-				// 检查游戏是否结束
-				return gameState.isGameOver(); // true 时终止循环
-			}))
-			.build();
+        return LoopAgent.builder()
+            .name("game_loop")
+            .subAgent(singleRound)
+            .maxLoops(config.getMaxRounds())
+            .loopStrategy(LoopMode.condition(messages -> {
+                return gameState.isGameOver();
+            }))
+            .build();
 	}
 
 	/**

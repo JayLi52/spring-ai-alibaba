@@ -55,12 +55,13 @@ public class WerewolfDayAgentBuilder {
 				.model(chatModel)
 				.instruction(promptConfig.getDayDiscussionSystemPrompt(playerName, player.getRole(), nightInfo,
 						previousSpeeches, gameState.getCurrentRound()))
-				.outputSchema("""
-						{
-							"speech": "你的发言内容（200-500字）",
-							"suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
-						}
-						""")
+                .outputSchema("""
+                        {
+                            "playerName": "你的名字",
+                            "speech": "你的发言内容（200-500字）",
+                            "suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
+                        }
+                        """)
 				.outputKey(playerName + "_speech")
 				.build();
 

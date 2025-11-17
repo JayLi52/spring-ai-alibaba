@@ -129,7 +129,7 @@ public class GameStateService {
 	/**
 	 * 获取夜晚事件摘要
 	 */
-	public String getNightSummary(WerewolfGameState gameState) {
+    public String getNightSummary(WerewolfGameState gameState) {
 		StringBuilder summary = new StringBuilder("昨夜情况：\n");
 
 		String killedPlayer = gameState.getNightKilledPlayer();
@@ -141,7 +141,17 @@ public class GameStateService {
 
 		if (killedPlayer != null && !killedPlayer.equals(savedPlayer)) {
 			deaths.add(killedPlayer);
-		}
+    }
+
+    /**
+     * 记录预言家查验历史
+     */
+    public void recordSeerCheck(WerewolfGameState gameState, String playerName, boolean isWerewolf) {
+        if (playerName == null || playerName.isEmpty()) {
+            return;
+        }
+        gameState.getSeerCheckHistory().put(playerName, isWerewolf);
+    }
 
 		if (poisonedPlayer != null) {
 			deaths.add(poisonedPlayer);

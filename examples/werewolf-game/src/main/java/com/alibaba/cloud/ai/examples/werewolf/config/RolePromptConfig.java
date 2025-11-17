@@ -241,19 +241,20 @@ public class RolePromptConfig {
 			context.append("\n");
 		}
 
-		context.append("""
-				请根据你的角色身份和已知信息进行发言：
-				1. 分析昨晚发生的事件
-				2. 表达你对其他玩家的看法
-				3. 提出你认为可疑的玩家
-				4. 根据角色策略决定是否跳身份
-				
-				输出格式（JSON）：
-				{
-					"speech": "你的发言内容（200-500字）",
-					"suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
-				}
-				""");
+        context.append("""
+                请根据你的角色身份和已知信息进行发言：
+                1. 分析昨晚发生的事件
+                2. 表达你对其他玩家的看法
+                3. 提出你认为可疑的玩家
+                4. 根据角色策略决定是否跳身份
+                
+                输出格式（JSON）：
+                {
+                    "playerName": "你的名字",
+                    "speech": "你的发言内容（200-500字）",
+                    "suspectedPlayers": ["可疑玩家1", "可疑玩家2"]
+                }
+                """);
 
 		return context.toString();
 	}
