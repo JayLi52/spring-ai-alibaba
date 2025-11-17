@@ -17,6 +17,7 @@
 package com.alibaba.cloud.ai.examples.documentation.framework.advanced.a2a;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +30,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/a2a")
+@ConditionalOnProperty(name = "spring.ai.alibaba.a2a.nacos.discovery.enabled", havingValue = "true")
 public class A2AExampleController {
 
 	private final A2AExample a2aExample;

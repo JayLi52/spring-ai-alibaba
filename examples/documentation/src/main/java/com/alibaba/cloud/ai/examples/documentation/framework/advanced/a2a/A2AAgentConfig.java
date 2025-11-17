@@ -21,6 +21,7 @@ import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import org.springframework.ai.chat.model.ChatModel;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * 定义并暴露本地 ReactAgent
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.ai.alibaba.a2a.nacos.discovery.enabled", havingValue = "true")
 public class A2AAgentConfig {
 
 	@Bean(name = "dataAnalysisAgent")

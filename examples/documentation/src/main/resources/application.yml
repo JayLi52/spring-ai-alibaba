@@ -19,9 +19,9 @@ spring:
           username: ${NACOS_USERNAME:nacos}
           password: ${NACOS_PASSWORD:nacos}
           discovery:
-            enabled: true  # 启用 A2A 服务发现，用于发现远程智能体
+            enabled: false  # 启用 A2A 服务发现，用于发现远程智能体
           registry:
-            enabled: true  # 启用 Nacos Registry，将本地 Agent 注册到 Nacos
+            enabled: false  # 启用 Nacos Registry，将本地 Agent 注册到 Nacos
         server:
           version: 1.0.0
           card:

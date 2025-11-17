@@ -25,6 +25,7 @@ import org.springframework.ai.chat.model.ChatModel;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -37,6 +38,7 @@ import java.util.Optional;
  * - 构造 A2aRemoteAgent 远程代理并完成调用
  */
 @Component
+@ConditionalOnProperty(name = "spring.ai.alibaba.a2a.nacos.discovery.enabled", havingValue = "true")
 public class A2AExample {
 
 	private final ChatModel chatModel;
