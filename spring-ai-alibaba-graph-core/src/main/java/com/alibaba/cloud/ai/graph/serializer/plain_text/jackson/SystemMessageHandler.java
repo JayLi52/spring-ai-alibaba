@@ -69,7 +69,7 @@ public interface SystemMessageHandler {
 
 	class Deserializer extends StdDeserializer<SystemMessage> {
 
-		protected Deserializer() {
+		public Deserializer() {
 			super(SystemMessage.class);
 		}
 

@@ -91,7 +91,7 @@ public interface AssistantMessageHandler {
 
 	class Deserializer extends StdDeserializer<AssistantMessage> {
 
-		protected Deserializer() {
+		public Deserializer() {
 			super(AssistantMessage.class);
 		}
 

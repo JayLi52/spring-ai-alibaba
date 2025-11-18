@@ -1,6 +1,10 @@
 package com.alibaba.cloud.ai.examples.werewolf.agent.day;
 
 import com.alibaba.cloud.ai.examples.werewolf.config.RolePromptConfig;
+import com.alibaba.cloud.ai.examples.werewolf.logging.AgentExecutionLogHook;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ModelCallLogHook;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ModelCallLoggingInterceptor;
+import com.alibaba.cloud.ai.examples.werewolf.logging.ToolCallLoggingInterceptor;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
 import com.alibaba.cloud.ai.examples.werewolf.model.Role;
 import com.alibaba.cloud.ai.examples.werewolf.model.WerewolfGameState;
@@ -63,6 +67,8 @@ public class WerewolfDayAgentBuilder {
                         }
                         """)
 				.outputKey(playerName + "_speech")
+				.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+				.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 				.build();
 
 			playerAgents.add(playerAgent);
@@ -114,6 +120,8 @@ public class WerewolfDayAgentBuilder {
 					}
 					""")
 			.outputKey("voting_result")
+			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 	}
 

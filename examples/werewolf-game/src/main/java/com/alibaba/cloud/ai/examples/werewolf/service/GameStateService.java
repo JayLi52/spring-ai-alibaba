@@ -141,30 +141,30 @@ public class GameStateService {
 
 		if (killedPlayer != null && !killedPlayer.equals(savedPlayer)) {
 			deaths.add(killedPlayer);
-    }
-
-    /**
-     * 记录预言家查验历史
-     */
-    public void recordSeerCheck(WerewolfGameState gameState, String playerName, boolean isWerewolf) {
-        if (playerName == null || playerName.isEmpty()) {
-            return;
-        }
-        gameState.getSeerCheckHistory().put(playerName, isWerewolf);
-    }
+		}
 
 		if (poisonedPlayer != null) {
 			deaths.add(poisonedPlayer);
 		}
 
 		if (deaths.isEmpty()) {
-			summary.append("- 平安夜，无人死亡\n");
+			summary.append("- 平安夜,无人死亡\n");
 		}
 		else {
 			summary.append("- 死亡玩家: ").append(String.join(", ", deaths)).append("\n");
 		}
 
 		return summary.toString();
+	}
+
+	/**
+	 * 记录预言家查验历史
+	 */
+	public void recordSeerCheck(WerewolfGameState gameState, String playerName, boolean isWerewolf) {
+		if (playerName == null || playerName.isEmpty()) {
+			return;
+		}
+		gameState.getSeerCheckHistory().put(playerName, isWerewolf);
 	}
 
 }

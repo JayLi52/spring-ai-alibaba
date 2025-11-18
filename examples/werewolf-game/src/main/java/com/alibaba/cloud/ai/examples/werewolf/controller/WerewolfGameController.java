@@ -1,6 +1,7 @@
 package com.alibaba.cloud.ai.examples.werewolf.controller;
 
 import com.alibaba.cloud.ai.examples.werewolf.agent.WerewolfGameAgentBuilder;
+import com.alibaba.cloud.ai.examples.werewolf.agent.day.WerewolfDayAgentBuilder;
 import com.alibaba.cloud.ai.examples.werewolf.agent.night.WerewolfNightAgentBuilder;
 import com.alibaba.cloud.ai.examples.werewolf.config.WerewolfConfig;
 import com.alibaba.cloud.ai.examples.werewolf.model.Player;
@@ -43,6 +44,7 @@ public class WerewolfGameController {
 
     private final WerewolfGameAgentBuilder gameAgentBuilder;
     private final WerewolfNightAgentBuilder nightAgentBuilder;
+    private final WerewolfDayAgentBuilder dayAgentBuilder;
     private Random random = new Random();
     private ObjectMapper objectMapper = new ObjectMapper();
 

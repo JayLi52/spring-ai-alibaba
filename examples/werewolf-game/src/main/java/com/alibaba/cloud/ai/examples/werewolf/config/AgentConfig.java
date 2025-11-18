@@ -13,12 +13,12 @@ public class AgentConfig {
 
 	/**
 	 * 配置 ChatModel Bean
-	 * Spring AI Alibaba DashScope Starter 会自动创建 ChatModel 实例
+	 * Spring AI OpenAI Starter 会自动创建 ChatModel 实例
 	 * 这里直接注入并暴露为 Bean，供 Agent 使用
 	 */
 	@Bean
-	public ChatModel chatModel(ChatModel dashscopeChatModel) {
-		return dashscopeChatModel;
+	public ChatModel chatModel(ChatModel openAiChatModel) {
+		return openAiChatModel;
 	}
 
 }
