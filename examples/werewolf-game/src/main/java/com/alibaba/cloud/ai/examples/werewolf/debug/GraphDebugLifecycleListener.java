@@ -33,6 +33,26 @@ public class GraphDebugLifecycleListener implements GraphLifecycleListener {
 	@Override
 	public void after(String nodeId, Map<String, Object> state, RunnableConfig config, Long curTime) {
 		log.info("◀️  [NODE AFTER] 节点: {} | 时间戳: {}", nodeId, curTime);
+		
+		// 打印 messages 数量,用于调试 Loop 中的消息传递
+		if (state != null && state.containsKey("messages")) {
+			Object msgs = state.get("messages");
+			if (msgs instanceof java.util.List) {
+				java.util.List<?> messageList = (java.util.List<?>) msgs;
+				log.info("{}💬 messages 数量: {} 条", INDENT, messageList.size());
+				
+				// 可选:打印最后一条消息的摘要(用于验证是否累积)
+				if (!messageList.isEmpty() && log.isDebugEnabled()) {
+					Object lastMsg = messageList.get(messageList.size() - 1);
+					String preview = lastMsg.toString();
+					if (preview.length() > 100) {
+						preview = preview.substring(0, 100) + "...";
+					}
+					log.debug("{}  最后一条消息: {}", INDENT, preview);
+				}
+			}
+		}
+		
 		logState(nodeId, state, "执行后状态");
 	}
 
@@ -72,11 +92,11 @@ public class GraphDebugLifecycleListener implements GraphLifecycleListener {
 			} else if (value instanceof String) {
 				String str = (String) value;
 				// 如果字符串太长，截断
-				if (str.length() > 200) {
-					valueStr = str.substring(0, 200) + "... (截断)";
-				} else {
-					valueStr = str;
-				}
+				// if (str.length() > 200) {
+				// 	valueStr = str.substring(0, 200) + "... (截断)";
+				// } else {
+				// }
+				valueStr = str;
 			} else if (value instanceof java.util.List) {
 				java.util.List<?> list = (java.util.List<?>) value;
 				valueStr = String.format("List[%d]", list.size());
@@ -85,9 +105,9 @@ public class GraphDebugLifecycleListener implements GraphLifecycleListener {
 				valueStr = String.format("Map[%d keys]", map.size());
 			} else {
 				valueStr = value.toString();
-				if (valueStr.length() > 200) {
-					valueStr = valueStr.substring(0, 200) + "... (截断)";
-				}
+				// if (valueStr.length() > 200) {
+				// 	valueStr = valueStr.substring(0, 200) + "... (截断)";
+				// }
 			}
 			log.info("{}{}  {} = {}", INDENT, INDENT, key, valueStr);
 		});

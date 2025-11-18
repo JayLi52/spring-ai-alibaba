@@ -67,8 +67,8 @@ public class WerewolfDayAgentBuilder {
                         }
                         """)
 				.outputKey(playerName + "_speech")
-				.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
-				.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
+				// .hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+				// .interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 				.build();
 
 			playerAgents.add(playerAgent);
@@ -120,8 +120,8 @@ public class WerewolfDayAgentBuilder {
 					}
 					""")
 			.outputKey("voting_result")
-			.hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
-			.interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
+			// .hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
+			// .interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
 			.build();
 	}
 
