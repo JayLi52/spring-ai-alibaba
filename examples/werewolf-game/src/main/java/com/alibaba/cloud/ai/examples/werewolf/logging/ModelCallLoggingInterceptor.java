@@ -26,8 +26,8 @@ public class ModelCallLoggingInterceptor extends ModelInterceptor {
         // ===== 请求前日志 =====
         log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         log.info("📤 [MODEL REQUEST]");
-        log.info("  消息数量: {}", request.getMessages() != null ? request.getMessages().size() : 0);
-        log.info("  工具数量: {}", request.getTools() != null ? request.getTools().size() : 0);
+//        log.info("  消息数量: {}", request.getMessages() != null ? request.getMessages().size() : 0);
+//        log.info("  工具数量: {}", request.getTools() != null ? request.getTools().size() : 0);
         
         // 记录最后一条用户消息
         if (request.getMessages() != null) {

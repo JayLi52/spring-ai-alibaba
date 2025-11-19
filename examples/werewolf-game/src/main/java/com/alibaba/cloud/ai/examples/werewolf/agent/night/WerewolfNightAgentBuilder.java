@@ -166,6 +166,7 @@ public class WerewolfNightAgentBuilder {
 				// 但在 LoopAgent 中，需要确保 messages 使用 AppendStrategy 累积
 				// .hooks(new AgentExecutionLogHook(), new ModelCallLogHook())
 				// .interceptors(new ModelCallLoggingInterceptor(), new ToolCallLoggingInterceptor())
+				.interceptors(new ModelCallLoggingInterceptor())
 				.build();
 			
 			sequentialSpeeches.add(speechAgent);
@@ -330,10 +331,15 @@ public class WerewolfNightAgentBuilder {
 			history.append("\n");
 		}
 		
-		// 2. 历史发言记录（所有玩家白天的发言都是公开的）
-		if (!gameState.getHistoricalSpeeches().isEmpty()) {
-			history.append("### 历史发言记录\n");
-			gameState.getHistoricalSpeeches().entrySet().stream()
+		// 2. 历史发言记录（只包含之前回合的白天发言，不包含当前回合）
+		int currentRound = gameState.getCurrentRound();
+		Map<Integer, Map<String, String>> previousDaySpeeches = gameState.getHistoricalSpeeches().entrySet().stream()
+			.filter(entry -> entry.getKey() < currentRound)  // 只取之前回合的发言
+			.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+			
+		if (!previousDaySpeeches.isEmpty()) {
+			history.append("### 历史发言记录（之前回合的白天发言）\n");
+			previousDaySpeeches.entrySet().stream()
 				.sorted(Map.Entry.comparingByKey())
 				.forEach(entry -> {
 					int round = entry.getKey();
