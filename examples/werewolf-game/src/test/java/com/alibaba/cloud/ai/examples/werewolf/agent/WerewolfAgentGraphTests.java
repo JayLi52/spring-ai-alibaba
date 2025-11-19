@@ -20,6 +20,8 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
+import com.alibaba.cloud.ai.graph.OverAllState;
+import org.springframework.ai.chat.messages.AssistantMessage;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -198,8 +200,17 @@ public class WerewolfAgentGraphTests {
         // assertNotNull(diagram, "Graph representation should not be null");
         try {
             String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
-            Object rawResult = werewolfDiscussion.invoke(input);
-            System.out.println(rawResult);
+            java.util.Optional<OverAllState> result = werewolfDiscussion.invoke(input);
+            if (result.isPresent()) {
+                Object val = result.get().value("werewolf_kill_target").orElse(null);
+                if (val instanceof AssistantMessage am) {
+                    System.out.println(am.getText());
+                } else {
+                    System.out.println(val);
+                }
+            } else {
+                System.out.println("No result state returned");
+            }
 
         } catch (GraphRunnerException e) {
             e.printStackTrace();
