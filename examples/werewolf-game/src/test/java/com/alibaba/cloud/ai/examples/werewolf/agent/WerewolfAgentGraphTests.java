@@ -199,6 +199,7 @@ public class WerewolfAgentGraphTests {
         try {
             String input = String.format("现在是第%d回合的夜晚，请决定今晚的击杀目标。", gameState.getCurrentRound());
             Object rawResult = werewolfDiscussion.invoke(input);
+            System.out.println(rawResult);
 
         } catch (GraphRunnerException e) {
             e.printStackTrace();
