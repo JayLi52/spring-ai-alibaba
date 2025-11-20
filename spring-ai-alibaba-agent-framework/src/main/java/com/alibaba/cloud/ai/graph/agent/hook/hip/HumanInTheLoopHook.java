@@ -116,13 +116,11 @@ public class HumanInTheLoopHook extends ModelHook implements AsyncNodeActionWith
 			Map<String, Object> updates = new HashMap<>();
 			List<Object> newMessages = new ArrayList<>();
 
-			if (!rejectedMessage.getResponses().isEmpty()) {
-				newMessages.add(rejectedMessage);
-			}
-
 			if (!newToolCalls.isEmpty()) {
-				// Replace the last message with the new assistant message containing updated tool calls
 				newMessages.add(new AssistantMessage(assistantMessage.getText(), assistantMessage.getMetadata(), newToolCalls, assistantMessage.getMedia()));
+				if (!rejectedMessage.getResponses().isEmpty()) {
+					newMessages.add(rejectedMessage);
+				}
 				newMessages.add(new RemoveByHash<>(assistantMessage));
 			}
 

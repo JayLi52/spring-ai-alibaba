@@ -26,19 +26,17 @@ public class SummaryInjectionHook extends ModelHook {
 
     @Override
     public Map<String, KeyStrategy> getKeyStrategys() {
-        return Map.of("messages", new ReplaceStrategy());
+        return Map.of();
     }
 
     @Override
     public CompletableFuture<Map<String, Object>> beforeModel(OverAllState state, RunnableConfig config) {
-        state.registerKeyAndStrategy("messages", new ReplaceStrategy());
-        String summary = (String) state.value("last_summary").orElse("");
-        List<Message> msgs = (List<Message>) state.value("messages").orElse(List.of());
-        String instruction = msgs.stream().filter(m -> m instanceof UserMessage)
-                .map(m -> ((UserMessage) m).getText()).reduce((a,b) -> b).orElse("");
-        String composite = (summary.isEmpty() ? instruction : summary + "\n\n" + instruction);
-        List<Message> newMsgs = new ArrayList<>();
-        newMsgs.add(new UserMessage(composite));
-        return CompletableFuture.completedFuture(Map.of("messages", newMsgs));
+        // String summary = (String) state.value("last_summary").orElse("");
+        // List<Message> msgs = (List<Message>) state.value("messages").orElse(List.of());
+        // String instruction = msgs.stream().filter(m -> m instanceof UserMessage)
+        //         .map(m -> ((UserMessage) m).getText()).reduce((a,b) -> b).orElse("");
+        // String composite = (summary.isEmpty() ? instruction : summary + "\n\n" + instruction);
+        System.out.println("[SummaryInjectionHook] message input: " + state.value("messages").orElse(List.of()));
+        return CompletableFuture.completedFuture(Map.of("messages", new UserMessage("123")));
     }
 }

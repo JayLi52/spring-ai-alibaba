@@ -18,6 +18,7 @@ import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.ParallelAgent.ListMergeStrategy;
 import com.alibaba.cloud.ai.graph.agent.hook.summarization.SummarizationHook;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
+import com.alibaba.cloud.ai.graph.state.strategy.AppendStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
@@ -160,8 +161,10 @@ public class WerewolfNightAgentBuilder {
                             "reason": "选择理由和策略分析"
                         }
                         """)
-                // .hooks(new SummaryInjectionHook(), new InputOutputSummaryHook(chatModel))
-                // .interceptors(new ModelCallLoggingInterceptor())
+                    .outputKey("discuss")
+                    .outputKeyStrategy(new AppendStrategy())
+                .hooks(new SummaryInjectionHook(), new InputOutputSummaryHook(chatModel))
+                 .interceptors(new ModelCallLoggingInterceptor())
                 .build();
             
             sequentialSpeeches.add(speechAgent);
